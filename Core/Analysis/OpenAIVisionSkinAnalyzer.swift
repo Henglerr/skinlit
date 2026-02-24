@@ -37,10 +37,8 @@ public struct BackendSkinAnalysisClient: SkinAnalysisRemoteClient {
     }
 
     public init(bundle: Bundle = .main, session: URLSession = .shared) {
-        self.endpointString = (bundle.object(forInfoDictionaryKey: "SkinAnalysisAPIEndpoint") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        self.authToken = (bundle.object(forInfoDictionaryKey: "SkinAnalysisAPIAuthToken") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        self.endpointString = AppConfig.skinAnalysisAPIEndpoint(bundle: bundle)
+        self.authToken = AppConfig.skinAnalysisAPIAuthToken(bundle: bundle)
         self.session = session
     }
 

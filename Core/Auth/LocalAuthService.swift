@@ -156,7 +156,7 @@ public final class LocalAuthService: AuthService {
     }
 
     private var googleClientID: String {
-        Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? ""
+        AppConfig.googleClientID()
     }
 
     private func signInWithProvider(

@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 
 public struct AppConfig {
     static let appId          = "skin-score"
@@ -34,4 +34,27 @@ public struct AppConfig {
         "Full Skin Profile — discover your real skin type",
         "Unlimited analyses"
     ]
+
+    static func googleClientID(bundle: Bundle = .main) -> String {
+        infoString(for: .googleClientID, bundle: bundle)
+    }
+
+    static func skinAnalysisAPIEndpoint(bundle: Bundle = .main) -> String {
+        infoString(for: .skinAnalysisAPIEndpoint, bundle: bundle)
+    }
+
+    static func skinAnalysisAPIAuthToken(bundle: Bundle = .main) -> String {
+        infoString(for: .skinAnalysisAPIAuthToken, bundle: bundle)
+    }
+
+    private enum InfoKey: String {
+        case googleClientID = "GIDClientID"
+        case skinAnalysisAPIEndpoint = "SkinAnalysisAPIEndpoint"
+        case skinAnalysisAPIAuthToken = "SkinAnalysisAPIAuthToken"
+    }
+
+    private static func infoString(for key: InfoKey, bundle: Bundle) -> String {
+        (bundle.object(forInfoDictionaryKey: key.rawValue) as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
 }
