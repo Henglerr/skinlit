@@ -15,6 +15,16 @@ public struct AppConfig {
         "Luminosity and vitality"
     ]
 
+    static let subscriptionProductIds = [
+        "com.skinscore.pro.weekly",
+        "com.skinscore.pro.monthly",
+        "com.skinscore.pro.yearly"
+    ]
+
+    static let privacyPolicyURL = URL(string: "https://example.com/privacy")!
+    static let termsURL = URL(string: "https://example.com/terms")!
+    static let supportURL = URL(string: "https://example.com/support")!
+
     static let paywallFeatures = [
         "Detailed score by criterion (hydration, texture, blemishes, luminosity)",
         "Full AI analysis — know exactly what to improve",

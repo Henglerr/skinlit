@@ -37,6 +37,8 @@ public enum AuthError: LocalizedError {
     case googleNotConfigured
     case presentationContextMissing
     case sessionPersistenceFailed
+    case noActiveSession
+    case accountDeletionFailed
     case signInFailed(String)
 
     public var errorDescription: String? {
@@ -51,6 +53,10 @@ public enum AuthError: LocalizedError {
             return "Could not present the sign-in flow."
         case .sessionPersistenceFailed:
             return "Could not save your local session."
+        case .noActiveSession:
+            return "No active session was found."
+        case .accountDeletionFailed:
+            return "Could not delete your local account data."
         case .signInFailed(let message):
             return message
         }

@@ -1,9 +1,9 @@
-import Foundation
-import Combine
-import SwiftUI
 import AuthenticationServices
-import UIKit
+import Combine
 import CryptoKit
+import Foundation
+import SwiftUI
+import UIKit
 
 public enum AppRoute: Hashable {
     case auth
@@ -16,7 +16,7 @@ public enum AppRoute: Hashable {
     case onboardingTransition
     case home
     case upload
-    case scanPrep(useCamera: Bool)  // pre-scan checklist + face processing
+    case scanPrep(useCamera: Bool)
     case shareGate
     case loadingAnalysis
     case paywall
@@ -52,28 +52,17 @@ private enum ImageFingerprint {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 🧪 ONBOARDING TESTING FLAG
-// Set to `true`  → onboarding runs every launch (for UI testing)
-// Set to `false` → normal behaviour (onboarding runs only once)
-// ─────────────────────────────────────────────────────────────────────────────
 #if DEBUG
 private let RESET_ONBOARDING_EACH_LAUNCH = true
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 🧪 SCAN GATE FLAG
-// Set to `true`  → share gate disabled, unlimited scans (for LLM testing)
-// Set to `false` → share gate active after 2 free scans
-// ─────────────────────────────────────────────────────────────────────────────
-private let DISABLE_SCAN_GATE = true
 #endif
 
 @MainActor
 public class AppState: ObservableObject {
-    private static let analysisCacheVersion = "2026-02-23-reference-v2"
+    private static let analysisCacheVersion = "2026-02-24-proxy-v1"
     private let authService: AuthService
     private let onboardingRepository: OnboardingRepository
     private let analysisRepository: AnalysisRepository
+    private let billingService: BillingService
     private let skinAnalysisService: SkinAnalysisService
     private let faceDetectionService: FaceDetectionService
     private var pendingScanImageData: Data?
@@ -82,7 +71,7 @@ public class AppState: ObservableObject {
     @Published public var isAuthenticated: Bool = false
     @Published public var hasCompletedOnboarding: Bool = false
     @AppStorage("appTheme") public var appTheme: String = "pastel"
-    @AppStorage("scanShareCount") public var scanShareCount: Int = 0   // times shared to unlock scans
+    @AppStorage("referralShareCount") public var referralShareCount: Int = 0
     @Published public var isBootstrapping: Bool = true
     @Published public var isAuthLoading: Bool = false
     @Published public var authErrorMessage: String? = nil
@@ -97,43 +86,60 @@ public class AppState: ObservableObject {
     @Published public var onboardingDraftRoutine: String? = nil
     @Published public var recentAnalyses: [LocalAnalysis] = []
 
-    /// True when the user has unlocked unlimited scans via sharing (shared 3 times)
-    public var scansUnlocked: Bool {
-#if DEBUG
-        if DISABLE_SCAN_GATE { return true }
-#endif
-        return scanShareCount >= 3
-    }
-    /// Free scan quota — first 2 are always free
+    @Published public var isProActive: Bool = false
+    @Published public var subscriptionPlanId: String? = nil
+    @Published public var subscriptionExpiry: Date? = nil
+    @Published public var paywallPackages: [PaywallPackage] = []
+    @Published public var isPaywallLoading: Bool = false
+    @Published public var billingErrorMessage: String? = nil
+
     public static let freeScanQuota = 2
 
+    public var remainingFreeScans: Int {
+        max(0, Self.freeScanQuota - recentAnalyses.count)
+    }
+
+    public var canRunScan: Bool {
+        isProActive || recentAnalyses.count < Self.freeScanQuota
+    }
 
     public init(
         authService: AuthService,
         onboardingRepository: OnboardingRepository,
         analysisRepository: AnalysisRepository,
+        billingService: BillingService,
         skinAnalysisService: SkinAnalysisService,
         faceDetectionService: FaceDetectionService
     ) {
         self.authService = authService
         self.onboardingRepository = onboardingRepository
         self.analysisRepository = analysisRepository
+        self.billingService = billingService
         self.skinAnalysisService = skinAnalysisService
         self.faceDetectionService = faceDetectionService
         self.isGoogleConfigured = authService.isGoogleSignInAvailable
     }
-    
+
     public func navigate(to route: AppRoute) {
         currentRoute.append(route)
     }
-    
+
     public func presentAsRoot(_ root: AppRoute) {
         currentRoute = [root]
     }
-    
+
     public func goBack() {
         if !currentRoute.isEmpty {
             currentRoute.removeLast()
+        }
+    }
+
+    public func openPaywall() {
+        if currentRoute.last != .paywall {
+            navigate(to: .paywall)
+        }
+        Task {
+            await refreshPaywallData()
         }
     }
 
@@ -144,15 +150,7 @@ public class AppState: ObservableObject {
 
         let restoredSession = await authService.restoreSession()
         guard let restoredSession else {
-            currentSession = nil
-            isAuthenticated = false
-            hasCompletedOnboarding = false
-            shouldOpenHomeDeepDive = false
-            homeDeepDiveAnalysisId = nil
-            pendingScanImageData = nil
-            scanErrorMessage = nil
-            clearOnboardingDraft()
-            recentAnalyses = []
+            resetSessionStateToSignedOut()
             presentAsRoot(.auth)
             return
         }
@@ -212,16 +210,18 @@ public class AppState: ObservableObject {
             authErrorMessage = userFacingError(from: error)
         }
 
-        currentSession = nil
-        isAuthenticated = false
-        hasCompletedOnboarding = false
-        shouldOpenHomeDeepDive = false
-        homeDeepDiveAnalysisId = nil
-        pendingScanImageData = nil
-        scanErrorMessage = nil
-        clearOnboardingDraft()
-        recentAnalyses = []
+        resetSessionStateToSignedOut()
         presentAsRoot(.auth)
+    }
+
+    public func deleteAccount() async {
+        do {
+            try await authService.deleteAccount()
+            resetSessionStateToSignedOut()
+            presentAsRoot(.auth)
+        } catch {
+            authErrorMessage = userFacingError(from: error)
+        }
     }
 
     public func setOnboardingGender(_ gender: String?) {
@@ -262,6 +262,7 @@ public class AppState: ObservableObject {
             clearOnboardingDraft()
             try loadRecentAnalyses(for: session.localUserId)
             presentAsRoot(.home)
+            await refreshPaywallData()
         } catch {
             authErrorMessage = "Could not save onboarding preferences locally."
         }
@@ -313,8 +314,13 @@ public class AppState: ObservableObject {
     }
 
     public func processPendingAnalysis() async -> String? {
-        guard let userId = currentSession?.localUserId else {
+        guard currentSession?.localUserId != nil else {
             scanErrorMessage = "Please sign in before running a scan."
+            return nil
+        }
+
+        guard canRunScan else {
+            scanErrorMessage = "Your free scans are finished. Upgrade to PRO to keep scanning."
             return nil
         }
 
@@ -327,7 +333,7 @@ public class AppState: ObservableObject {
         let rawImageHash = ImageFingerprint.stableHash(for: imageData)
         let imageHash = rawImageHash.map { "\(Self.analysisCacheVersion):\($0)" }
 
-        if let imageHash {
+        if let imageHash, let userId = currentSession?.localUserId {
             do {
                 if let existing = try analysisRepository.analysis(byImageHash: imageHash, userId: userId) {
                     try analysisRepository.touchAnalysis(id: existing.id)
@@ -336,7 +342,7 @@ public class AppState: ObservableObject {
                     return existing.id
                 }
             } catch {
-                // If cache lookup fails, continue with a fresh analysis.
+                // Cache lookup failure should not block a fresh analysis.
             }
         }
 
@@ -348,7 +354,6 @@ public class AppState: ObservableObject {
             }
 
             let result = try await skinAnalysisService.analyze(imageData: imageData)
-
             let analysisId = UUID().uuidString
             persistAnalysis(
                 id: analysisId,
@@ -369,10 +374,51 @@ public class AppState: ObservableObject {
         }
     }
 
+    public func refreshPaywallData() async {
+        await refreshBillingState()
+        await loadPaywallPackages()
+    }
+
+    public func purchaseSubscription(_ packageId: String) async -> Bool {
+        isPaywallLoading = true
+        billingErrorMessage = nil
+        defer { isPaywallLoading = false }
+
+        do {
+            let didPurchase = try await billingService.purchase(packageId)
+            if didPurchase {
+                await refreshBillingState()
+            }
+            return didPurchase && isProActive
+        } catch {
+            billingErrorMessage = userFacingBillingError(from: error)
+            return false
+        }
+    }
+
+    public func restoreSubscriptions() async -> Bool {
+        isPaywallLoading = true
+        billingErrorMessage = nil
+        defer { isPaywallLoading = false }
+
+        do {
+            let restored = try await billingService.restore()
+            await refreshBillingState()
+            return restored && isProActive
+        } catch {
+            billingErrorMessage = userFacingBillingError(from: error)
+            return false
+        }
+    }
+
     public func openAnalysisInHomeDeepDive(_ analysisId: String? = nil) {
         homeDeepDiveAnalysisId = analysisId
         shouldOpenHomeDeepDive = true
         presentAsRoot(.home)
+    }
+
+    public func recordReferralShare() {
+        referralShareCount += 1
     }
 
     private func setAuthenticatedState(with session: AuthSession) async {
@@ -392,10 +438,35 @@ public class AppState: ObservableObject {
             hasCompletedOnboarding = false
             presentAsRoot(.onboardingGender)
         }
+
+        await refreshPaywallData()
     }
 
     private func loadRecentAnalyses(for userId: String) throws {
         recentAnalyses = try analysisRepository.fetchRecentAnalyses(userId: userId, limit: 20)
+    }
+
+    private func loadPaywallPackages() async {
+        do {
+            paywallPackages = try await billingService.fetchPackages()
+        } catch {
+            paywallPackages = []
+            billingErrorMessage = userFacingBillingError(from: error)
+        }
+    }
+
+    private func refreshBillingState() async {
+        do {
+            let entitlement = try await billingService.currentEntitlement()
+            isProActive = entitlement.isActive
+            subscriptionPlanId = entitlement.productId
+            subscriptionExpiry = entitlement.expirationDate
+        } catch {
+            isProActive = false
+            subscriptionPlanId = nil
+            subscriptionExpiry = nil
+            billingErrorMessage = userFacingBillingError(from: error)
+        }
     }
 
     private func clearOnboardingDraft() {
@@ -405,9 +476,33 @@ public class AppState: ObservableObject {
         onboardingDraftRoutine = nil
     }
 
+    private func resetSessionStateToSignedOut() {
+        currentSession = nil
+        isAuthenticated = false
+        hasCompletedOnboarding = false
+        shouldOpenHomeDeepDive = false
+        homeDeepDiveAnalysisId = nil
+        pendingScanImageData = nil
+        scanErrorMessage = nil
+        clearOnboardingDraft()
+        recentAnalyses = []
+        isProActive = false
+        subscriptionPlanId = nil
+        subscriptionExpiry = nil
+        paywallPackages = []
+        billingErrorMessage = nil
+    }
+
     private func userFacingError(from error: Error) -> String {
         if let authError = error as? AuthError {
             return authError.localizedDescription
+        }
+        return error.localizedDescription
+    }
+
+    private func userFacingBillingError(from error: Error) -> String {
+        if let billingError = error as? BillingError {
+            return billingError.localizedDescription
         }
         return error.localizedDescription
     }

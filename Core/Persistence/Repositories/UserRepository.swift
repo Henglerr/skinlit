@@ -63,4 +63,10 @@ public final class UserRepository {
         try context.save()
         return user
     }
+
+    public func deleteUser(id: String) throws {
+        guard let existing = try user(byId: id) else { return }
+        context.delete(existing)
+        try context.save()
+    }
 }

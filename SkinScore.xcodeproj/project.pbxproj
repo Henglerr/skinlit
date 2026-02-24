@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		02BB31B01F139CD9B2A88B7A /* OpenAIVisionSkinAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51FD1C39457A7A4119923AB8 /* OpenAIVisionSkinAnalyzer.swift */; };
+		A1B2C3D40123456789ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D60123456789ABCDEF /* Assets.xcassets */; };
+		A1B2C3D50123456789ABCDEF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */; };
 		072B67DA992C490F9267E7BA /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 578637877246D4B4E4779285 /* HomeView.swift */; };
 		07FDFC52AA50A38D8AF85B49 /* RoutineCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE69A8F717CD30675B3989B2 /* RoutineCard.swift */; };
 		1B71025B3C5BD66FB58E8187 /* OnboardingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3B96F886D318F3CCA0386A2 /* OnboardingViews.swift */; };
@@ -56,6 +58,8 @@
 		02BB1DF887C2D8BEFEF0823A /* AppLocalSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalSettings.swift; sourceTree = "<group>"; };
 		0B03CE3E5EF7347C1180B488 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		0F2E4667F311F100A8C1E2FB /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		A1B2C3D60123456789ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		158AC89A13240A83B6B80D4F /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		25B9153CD631076352375988 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -110,6 +114,18 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1B2C3D80123456789ABCDEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D40123456789ABCDEF /* Assets.xcassets in Resources */,
+				A1B2C3D50123456789ABCDEF /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		012A2A5950FD0CA5F671AB5D /* Onboarding */ = {
@@ -341,7 +357,9 @@
 		F3A7B670C6326DADD9195C60 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D60123456789ABCDEF /* Assets.xcassets */,
 				25B9153CD631076352375988 /* Info.plist */,
+				A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */,
 				70839CB48C04EFF93B7BE93D /* SkinScore.entitlements */,
 			);
 			path = Resources;
@@ -364,6 +382,7 @@
 			buildPhases = (
 				3FE1C954E828A3002C2783FF /* Sources */,
 				F3E9CB627BBE56BFCA1B9931 /* Frameworks */,
+				A1B2C3D80123456789ABCDEF /* Resources */,
 			);
 			buildRules = (
 			);
@@ -534,7 +553,7 @@
 				SDKROOT = iphoneos;
 				SKIN_ANALYSIS_API_AUTH_TOKEN = "";
 				SKIN_ANALYSIS_API_ENDPOINT = "https://api.example.com/v1/skin-analysis";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -555,7 +574,7 @@
 				SDKROOT = iphoneos;
 				SKIN_ANALYSIS_API_AUTH_TOKEN = "";
 				SKIN_ANALYSIS_API_ENDPOINT = "https://api.example.com/v1/skin-analysis";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};

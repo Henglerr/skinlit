@@ -4,17 +4,23 @@ public protocol SkinAnalysisService {
     func analyze(imageData: Data) async throws -> OnDeviceAnalysisResult
 }
 
-public struct CompositeSkinAnalysisService: SkinAnalysisService {
-    private let remoteAnalyzer: OpenAIVisionSkinAnalyzer
+public protocol SkinAnalysisRemoteClient {
+    var isConfigured: Bool { get }
+    func analyze(imageData: Data) async throws -> OnDeviceAnalysisResult
+}
 
-    public init(remoteAnalyzer: OpenAIVisionSkinAnalyzer = OpenAIVisionSkinAnalyzer()) {
-        self.remoteAnalyzer = remoteAnalyzer
+public struct CompositeSkinAnalysisService: SkinAnalysisService {
+    private let remoteClient: SkinAnalysisRemoteClient
+
+    public init(remoteClient: SkinAnalysisRemoteClient = BackendSkinAnalysisClient()) {
+        self.remoteClient = remoteClient
     }
 
     public func analyze(imageData: Data) async throws -> OnDeviceAnalysisResult {
-        if remoteAnalyzer.isConfigured {
-            return try await remoteAnalyzer.analyze(imageData: imageData)
+        if remoteClient.isConfigured {
+            return try await remoteClient.analyze(imageData: imageData)
         }
+
         return try await Task.detached(priority: .userInitiated) {
             try OnDeviceSkinAnalyzer.analyze(imageData: imageData)
         }.value

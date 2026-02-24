@@ -10,4 +10,5 @@ public protocol AuthService {
     func signInWithGoogle() async throws -> AuthSession
     func continueAsGuest() async throws -> AuthSession
     func signOut() async throws
+    func deleteAccount() async throws
 }

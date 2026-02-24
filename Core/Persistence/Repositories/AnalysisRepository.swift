@@ -87,4 +87,14 @@ public final class AnalysisRepository {
         }
         try context.save()
     }
+
+    public func deleteAnalyses(userId: String) throws {
+        let predicate = #Predicate<LocalAnalysis> { $0.userId == userId }
+        let descriptor = FetchDescriptor<LocalAnalysis>(predicate: predicate)
+        let analyses = try context.fetch(descriptor)
+        for analysis in analyses {
+            context.delete(analysis)
+        }
+        try context.save()
+    }
 }

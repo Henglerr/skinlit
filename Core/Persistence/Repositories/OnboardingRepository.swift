@@ -79,4 +79,10 @@ public final class OnboardingRepository {
         context.delete(existing)
         try context.save()
     }
+
+    public func deleteProfile(userId: String) throws {
+        guard let existing = try profile(userId: userId) else { return }
+        context.delete(existing)
+        try context.save()
+    }
 }

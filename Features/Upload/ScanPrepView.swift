@@ -90,6 +90,15 @@ struct ScanPrepView: View {
                             }
                         }
 
+                        Text("By continuing, your selfie is uploaded securely for cloud-based cosmetic AI analysis. This is not medical advice.")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            .lineSpacing(3)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(AppTheme.shared.current.colors.surface)
+                            .cornerRadius(12)
+
                         // ── Error message ────────────────────────────────────
                         if let msg = pickerErrorMessage ?? appState.scanErrorMessage {
                             HStack(spacing: 8) {
@@ -170,6 +179,10 @@ struct ScanPrepView: View {
     private func openPicker() {
         pickerErrorMessage = nil
         appState.scanErrorMessage = nil
+        guard appState.canRunScan else {
+            appState.openPaywall()
+            return
+        }
         guard UIImagePickerController.isSourceTypeAvailable(sourceType) else {
             pickerErrorMessage = sourceType == .camera
                 ? "Camera unavailable on this device — choose from gallery instead."
@@ -188,10 +201,7 @@ struct ScanPrepView: View {
                 await MainActor.run {
                     isProcessing = false
                     appState.queueScanImageData(data)
-                    // Share gate check
-                    let needsShare = appState.recentAnalyses.count >= AppState.freeScanQuota
-                        && !appState.scansUnlocked
-                    appState.navigate(to: needsShare ? .shareGate : .loadingAnalysis)
+                    appState.navigate(to: .loadingAnalysis)
                 }
             } catch let err as FaceImageProcessor.ProcessorError {
                 await MainActor.run {

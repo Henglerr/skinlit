@@ -9,7 +9,7 @@ struct LoadingView: View {
     @State private var ringRotation: Double = 0
     @State private var ringScale: CGFloat = 1.0
     @State private var hasStartedAnalysis = false
-    
+
     let phrases = [
         "Analyzing hydration levels...",
         "Checking pores and texture...",
@@ -17,7 +17,7 @@ struct LoadingView: View {
         "Evaluating uniformity...",
         "Calculating your Skin Score..."
     ]
-    
+
     let timer = Timer.publish(every: 1.8, on: .main, in: .common).autoconnect()
 
     private func popToLatestScanPrep() {
@@ -30,28 +30,25 @@ struct LoadingView: View {
         }
         appState.presentAsRoot(.upload)
     }
-    
+
     var body: some View {
         ZStack {
             AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
-            
-            // Pulsing glow behind the ring
+
             Circle()
                 .fill(AppTheme.shared.current.colors.accentSoft)
                 .frame(width: 280, height: 280)
                 .blur(radius: 50)
                 .scaleEffect(ringScale)
-            
+
             VStack(spacing: 48) {
                 Spacer()
-                
+
                 ZStack {
-                    // Background ring
                     Circle()
                         .stroke(AppTheme.shared.current.colors.surfaceHigh, lineWidth: 6)
                         .frame(width: 140, height: 140)
-                    
-                    // Spinning gradient arc
+
                     Circle()
                         .trim(from: 0, to: 0.7)
                         .stroke(
@@ -66,8 +63,7 @@ struct LoadingView: View {
                         )
                         .frame(width: 140, height: 140)
                         .rotationEffect(.degrees(ringRotation))
-                    
-                    // Center icon
+
                     Image(systemName: "faceid")
                         .font(.system(size: 40, weight: .thin))
                         .foregroundStyle(AppTheme.shared.current.colors.primaryGradient)
@@ -80,7 +76,7 @@ struct LoadingView: View {
                         ringScale = 1.2
                     }
                 }
-                
+
                 Text(phrases[currentPhraseIndex])
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(AppTheme.shared.current.colors.textPrimary)
@@ -93,7 +89,7 @@ struct LoadingView: View {
                             withAnimation(.easeIn(duration: 0.3)) { phraseOpacity = 1 }
                         }
                     }
-                
+
                 Spacer()
             }
             .padding(.horizontal, 40)
@@ -128,38 +124,35 @@ struct LoadingView: View {
 
 struct PaywallView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedPlan = "monthly"
-    @State private var isLoading = false
-    
-    let plans: [(id: String, title: String, price: String, period: String, trial: String?, badge: String?)] = [
-        ("weekly",  "Weekly",  "$2.99",  "/ week",  nil,        nil),
-        ("monthly", "Monthly", "$6.99",  "/ month", "3-day free trial", "MOST POPULAR"),
-        ("yearly",  "Yearly",  "$29.99", "/ year",  "3-day free trial", "BEST VALUE"),
-    ]
-    
-    let features = [
+    @Environment(\.openURL) private var openURL
+
+    @State private var selectedPlanId: String? = nil
+    @State private var showShareSheet = false
+
+    private let features = [
         "Detailed score per criterion",
-        "Full AI skin analysis",
+        "Full cosmetic AI skin analysis",
         "Weekly progress history",
-        "Community feed unlimited",
-        "Notifications when rated",
-        "Complete Skin Profile",
+        "Personalized routine suggestions",
         "Unlimited analyses"
     ]
-    
+
+    private var selectedPlan: PaywallPackage? {
+        guard let selectedPlanId else { return appState.paywallPackages.first }
+        return appState.paywallPackages.first(where: { $0.id == selectedPlanId }) ?? appState.paywallPackages.first
+    }
+
     var body: some View {
         ZStack {
             AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
-            
-            // Ambient
+
             Circle()
                 .fill(AppTheme.shared.current.colors.accentSoft)
                 .frame(width: 350)
                 .blur(radius: 80)
                 .offset(y: -300)
-            
+
             VStack(spacing: 0) {
-                // Close
                 HStack {
                     Spacer()
                     Button(action: { appState.goBack() }) {
@@ -173,26 +166,24 @@ struct PaywallView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
-                
+
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 28) {
-                        // Header
+                    VStack(spacing: 22) {
                         VStack(spacing: 12) {
                             Image(systemName: "faceid")
                                 .font(.system(size: 44, weight: .thin))
                                 .foregroundStyle(AppTheme.shared.current.colors.primaryGradient)
-                            
-                            Text("Unlock Skin Score")
+
+                            Text("Unlock Skin Score PRO")
                                 .font(.system(size: 30, weight: .heavy))
                                 .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                            
-                            Text("Get the full analysis, tips, and track your glow-up over time.")
+
+                            Text("Cosmetic wellness insights, progress tracking, and unlimited scans.")
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                                 .multilineTextAlignment(.center)
                         }
-                        
-                        // Features list
+
                         VStack(spacing: 12) {
                             ForEach(features, id: \.self) { feature in
                                 HStack(spacing: 12) {
@@ -209,52 +200,146 @@ struct PaywallView: View {
                         .padding(24)
                         .background(AppTheme.shared.current.colors.surface)
                         .cornerRadius(24)
-                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.06), lineWidth: 1))
-                        
-                        // Plan selector
-                        VStack(spacing: 12) {
-                            ForEach(plans, id: \.id) { plan in
-                                PaywallPlanRow(
-                                    plan: plan,
-                                    isSelected: selectedPlan == plan.id,
-                                    onTap: { selectedPlan = plan.id }
-                                )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24)
+                                .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.06), lineWidth: 1)
+                        )
+
+                        if appState.paywallPackages.isEmpty {
+                            VStack(spacing: 10) {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                Text("Loading subscription options...")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            }
+                            .padding(.vertical, 20)
+                        } else {
+                            VStack(spacing: 12) {
+                                ForEach(appState.paywallPackages) { plan in
+                                    PaywallPlanRow(
+                                        plan: plan,
+                                        isSelected: resolvedSelectedPlanId == plan.id,
+                                        onTap: { selectedPlanId = plan.id }
+                                    )
+                                }
                             }
                         }
-                        
-                        // CTA
+
+                        if let error = appState.billingErrorMessage {
+                            Text(error)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.error)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 8)
+                        }
+
                         PrimaryButton(
-                            selectedPlan == "weekly" ? "Start Now" : "Start Free Trial",
+                            callToActionTitle,
                             icon: "lock.open.fill",
-                            isEnabled: !isLoading
+                            isEnabled: !appState.isPaywallLoading && selectedPlan != nil
                         ) {
-                            isLoading = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                isLoading = false
-                                appState.goBack()
+                            guard let selectedPlan else { return }
+                            Task {
+                                let didActivate = await appState.purchaseSubscription(selectedPlan.id)
+                                if didActivate {
+                                    appState.goBack()
+                                }
                             }
                         }
-                        
-                        Button(action: {}) {
-                            Text("Restore Purchase")
-                                .font(.system(size: 14, weight: .medium))
+
+                        if appState.isPaywallLoading {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(AppTheme.shared.current.colors.accent)
+                        }
+
+                        Button {
+                            Task {
+                                let didRestore = await appState.restoreSubscriptions()
+                                if didRestore {
+                                    appState.goBack()
+                                }
+                            }
+                        } label: {
+                            Text("Restore Purchases")
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                         }
-                        .padding(.bottom, 20)
+
+                        Button {
+                            showShareSheet = true
+                        } label: {
+                            Text("Share SkinScore with a Friend (Optional)")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .underline()
+                        }
+
+                        VStack(spacing: 8) {
+                            Text("Subscription renews automatically unless cancelled at least 24 hours before period end. Manage anytime in App Store account settings.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .multilineTextAlignment(.center)
+
+                            HStack(spacing: 14) {
+                                Button("Privacy") { openURL(AppConfig.privacyPolicyURL) }
+                                Button("Terms") { openURL(AppConfig.termsURL) }
+                                Button("Support") { openURL(AppConfig.supportURL) }
+                            }
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(AppTheme.shared.current.colors.accent)
+                        }
+
+                        Text("SkinScore provides cosmetic wellness insights and is not a medical diagnosis.")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 2)
                     }
                     .padding(.horizontal, 24)
+                    .padding(.bottom, 22)
                 }
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(items: [
+                "I’m using Skin Score to track my cosmetic skin progress with AI. Try it free 👇 https://apps.apple.com/app/skin-score"
+            ]) {
+                appState.recordReferralShare()
+            }
+        }
+        .onAppear {
+            if selectedPlanId == nil {
+                selectedPlanId = appState.paywallPackages.first?.id
+            }
+            Task {
+                await appState.refreshPaywallData()
+                if selectedPlanId == nil {
+                    selectedPlanId = appState.paywallPackages.first?.id
+                }
+            }
+        }
+    }
+
+    private var resolvedSelectedPlanId: String {
+        selectedPlanId ?? appState.paywallPackages.first?.id ?? ""
+    }
+
+    private var callToActionTitle: String {
+        if let trial = selectedPlan?.trialDescription, !trial.isEmpty {
+            return "Start \(trial)"
+        }
+        return "Subscribe Now"
     }
 }
 
 struct PaywallPlanRow: View {
-    let plan: (id: String, title: String, price: String, period: String, trial: String?, badge: String?)
+    let plan: PaywallPackage
     let isSelected: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: {
             let impact = UIImpactFeedbackGenerator(style: .light)
@@ -272,7 +357,7 @@ struct PaywallPlanRow: View {
                             .foregroundColor(.black)
                     }
                 }
-                
+
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
                         Text(plan.title)
@@ -288,30 +373,28 @@ struct PaywallPlanRow: View {
                                 .cornerRadius(100)
                         }
                     }
-                    if let trial = plan.trial {
+                    if let trial = plan.trialDescription {
                         Text(trial)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.accent)
                     }
                 }
-                
+
                 Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(plan.price)
-                        .font(.system(size: 18, weight: .heavy))
-                        .foregroundColor(isSelected ? AppTheme.shared.current.colors.accent : AppTheme.shared.current.colors.textPrimary)
-                    Text(plan.period)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                }
+
+                Text(plan.priceText)
+                    .font(.system(size: 18, weight: .heavy))
+                    .foregroundColor(isSelected ? AppTheme.shared.current.colors.accent : AppTheme.shared.current.colors.textPrimary)
             }
             .padding(20)
             .background(isSelected ? AppTheme.shared.current.colors.accentSoft : AppTheme.shared.current.colors.surface)
             .cornerRadius(20)
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? AppTheme.shared.current.colors.accent : AppTheme.shared.current.colors.textPrimary.opacity(0.06), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(
+                        isSelected ? AppTheme.shared.current.colors.accent : AppTheme.shared.current.colors.textPrimary.opacity(0.06),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
             )
         }
         .buttonStyle(PlainButtonStyle())

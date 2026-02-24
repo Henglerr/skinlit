@@ -21,6 +21,7 @@ targets:
         GOOGLE_REVERSED_CLIENT_ID: "com.googleusercontent.apps.761568363778-qalajuv5ts953ispbj930igvck6lqe52"
         SKIN_ANALYSIS_API_ENDPOINT: "https://api.example.com/v1/skin-analysis"
         SKIN_ANALYSIS_API_AUTH_TOKEN: ""
+        TARGETED_DEVICE_FAMILY: 1
     info:
       path: Resources/Info.plist
       properties:

@@ -136,6 +136,25 @@ public final class LocalAuthService: AuthService {
         try await invalidateSession()
     }
 
+    public func deleteAccount() async throws {
+        guard let session = loadPersistedSession() else {
+            throw AuthError.noActiveSession
+        }
+
+        do {
+            if GIDSignIn.sharedInstance.currentUser != nil {
+                GIDSignIn.sharedInstance.signOut()
+            }
+
+            try analysisRepository.deleteAnalyses(userId: session.localUserId)
+            try onboardingRepository.deleteProfile(userId: session.localUserId)
+            try userRepository.deleteUser(id: session.localUserId)
+            try await invalidateSession()
+        } catch {
+            throw AuthError.accountDeletionFailed
+        }
+    }
+
     private var googleClientID: String {
         Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? ""
     }

@@ -17,6 +17,7 @@ struct SkinScoreApp: App {
             let onboardingRepository = OnboardingRepository(context: context)
             let analysisRepository = AnalysisRepository(context: context)
             let settingsRepository = SettingsRepository(context: context)
+            let billingService = StoreKitBillingService(productIDs: AppConfig.subscriptionProductIds)
             let skinAnalysisService = CompositeSkinAnalysisService()
             let faceDetectionService = VisionFaceDetectionService()
 
@@ -32,6 +33,7 @@ struct SkinScoreApp: App {
                     authService: authService,
                     onboardingRepository: onboardingRepository,
                     analysisRepository: analysisRepository,
+                    billingService: billingService,
                     skinAnalysisService: skinAnalysisService,
                     faceDetectionService: faceDetectionService
                 )

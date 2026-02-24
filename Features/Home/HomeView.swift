@@ -25,6 +25,7 @@ struct HomeView: View {
     @State private var selectedTab: HomeTab = .home
     @State private var orbScale: CGFloat = 1.0
     @State private var selectedAnalysisId: String? = nil
+    @State private var showDeleteAccountAlert = false
 
     // ── Derived from real analysis data ──────────────────────────────────────
     private var mostRecentAnalysis: LocalAnalysis? { appState.recentAnalyses.first }
@@ -64,12 +65,16 @@ struct HomeView: View {
         ]
         return allDefs.map { def in
             let score = latestCriteria[def.id] ?? 0.0   // 0 = truly no data
+            let isLockedPremium = def.isPremium && !appState.isProActive
             return SkinMetric(id: def.id, icon: def.icon, score: score,
                               aiInsight: insightText(for: def.id, score: score),
                               routineFix: routineFixText(for: def.id, score: score),
-                              isPremium: def.isPremium)
+                              isPremium: isLockedPremium)
         }
     }
+
+    private var freeMetrics: [SkinMetric] { metrics.filter { !$0.isPremium } }
+    private var lockedPremiumMetrics: [SkinMetric] { metrics.filter { $0.isPremium } }
 
     // MARK: - Body
 
@@ -100,20 +105,60 @@ struct HomeView: View {
                             .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                     }
                     Spacer()
-                    HStack(spacing: 2) {
+                    HStack(spacing: 10) {
                         homeTabPill(label: "Home",      tab: .home)
                         homeTabPill(label: "Deep Dive", tab: .deepDive)
+
+                        Menu {
+                            Button {
+                                Task { _ = await appState.restoreSubscriptions() }
+                            } label: {
+                                Label("Restore Purchases", systemImage: "arrow.clockwise")
+                            }
+
+                            Button {
+                                appState.navigate(to: .shareGate)
+                            } label: {
+                                Label("Share App", systemImage: "square.and.arrow.up")
+                            }
+
+                            Button {
+                                Task { await appState.signOut() }
+                            } label: {
+                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            }
+
+                            Button(role: .destructive) {
+                                showDeleteAccountAlert = true
+                            } label: {
+                                Label("Delete Account", systemImage: "trash")
+                            }
+                        } label: {
+                            Image(systemName: "person.crop.circle")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                .frame(width: 34, height: 34)
+                                .background(AppTheme.shared.current.colors.surface)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.07), lineWidth: 1)
+                                )
+                        }
                     }
-                    .padding(4)
-                    .background(AppTheme.shared.current.colors.surface)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.07), lineWidth: 1))
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 14)
 
                 Divider().background(AppTheme.shared.current.colors.textPrimary.opacity(0.05))
+
+                Text("Cosmetic wellness insights only — not a medical diagnosis.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
 
                 if selectedTab == .home {
                     homeContent.transition(.opacity)
@@ -127,13 +172,21 @@ struct HomeView: View {
             appState.refreshRecentAnalyses()
             consumeDeepDiveIntentIfNeeded()
         }
-        .onChange(of: appState.shouldOpenHomeDeepDive) { _ in
+        .onChange(of: appState.shouldOpenHomeDeepDive) { _, _ in
             consumeDeepDiveIntentIfNeeded()
         }
-        .onChange(of: appState.recentAnalyses.map(\.id)) { ids in
+        .onChange(of: appState.recentAnalyses.map(\.id)) { _, ids in
             if let selectedAnalysisId, !ids.contains(selectedAnalysisId) {
                 self.selectedAnalysisId = nil
             }
+        }
+        .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                Task { await appState.deleteAccount() }
+            }
+        } message: {
+            Text("This permanently removes your local profile and analysis history from this device.")
         }
     }
 
@@ -314,39 +367,40 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 4)
 
-                    ForEach(metrics.filter { !$0.isPremium }) { metric in
+                    ForEach(freeMetrics) { metric in
                         MetricDetailCard(
                             metric: metric,
                             history: metricHistory(for: metric.id),
-                            onUnlock: { appState.navigate(to: .paywall) }
+                            onUnlock: { appState.openPaywall() }
                         )
                     }
 
-                    // ── Premium Metrics ───────────────────────────────────────
-                    HStack {
-                        Text("PRO").font(.system(size: 10, weight: .heavy)).kerning(1.4)
-                            .foregroundColor(AppTheme.shared.current.colors.accent)
-                        Spacer()
-                        Button { appState.navigate(to: .paywall) } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "lock.open.fill").font(.system(size: 10))
-                                Text("Unlock All").font(.system(size: 12, weight: .bold))
+                    if !lockedPremiumMetrics.isEmpty {
+                        // ── Premium Metrics ───────────────────────────────────────
+                        HStack {
+                            Text("PRO").font(.system(size: 10, weight: .heavy)).kerning(1.4)
+                                .foregroundColor(AppTheme.shared.current.colors.accent)
+                            Spacer()
+                            Button { appState.openPaywall() } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "lock.open.fill").font(.system(size: 10))
+                                    Text("Unlock All").font(.system(size: 12, weight: .bold))
+                                }
+                                .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(AppTheme.shared.current.colors.accent)
+                                .clipShape(Capsule())
                             }
-                            .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(AppTheme.shared.current.colors.accent)
-                            .clipShape(Capsule())
                         }
-                    }
+                        .padding(.horizontal, 4)
 
-                    .padding(.horizontal, 4)
-
-                    ForEach(metrics.filter { $0.isPremium }) { metric in
-                        MetricDetailCard(
-                            metric: metric,
-                            history: [],
-                            onUnlock: { appState.navigate(to: .paywall) }
-                        )
+                        ForEach(lockedPremiumMetrics) { metric in
+                            MetricDetailCard(
+                                metric: metric,
+                                history: [],
+                                onUnlock: { appState.openPaywall() }
+                            )
+                        }
                     }
                 } // end else (has analyses)
 
