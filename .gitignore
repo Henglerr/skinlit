@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode user data
+*.xcuserstate
+xcuserdata/
+
+# Build artifacts
+build/
+DerivedData/
+*.ipa
+*.dSYM
+
+# Logs and local artifacts
+build.log
+*.log
+
+# Swift Package Manager
+.build/
+
+# IDE
+.idea/
+.vscode/
