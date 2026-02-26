@@ -21,9 +21,9 @@ public struct AppConfig {
         "com.skinscore.pro.yearly"
     ]
 
-    static let privacyPolicyURL = URL(string: "https://example.com/privacy")!
-    static let termsURL = URL(string: "https://example.com/terms")!
-    static let supportURL = URL(string: "https://example.com/support")!
+    static let privacyPolicyURL = URL(string: "https://henglerr.github.io/Skinapp/privacy.html")!
+    static let termsURL = URL(string: "https://henglerr.github.io/Skinapp/terms.html")!
+    static let supportURL = URL(string: "https://henglerr.github.io/Skinapp/support.html")!
 
     static let paywallFeatures = [
         "Detailed score by criterion (hydration, texture, blemishes, luminosity)",

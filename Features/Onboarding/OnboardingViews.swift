@@ -1,6 +1,10 @@
 import SwiftUI
 import StoreKit
 
+private let onboardingHorizontalPadding: CGFloat = 20
+private let onboardingButtonHorizontalPadding: CGFloat = 20
+private let onboardingBottomContentMargin: CGFloat = 140
+
 struct OnboardingGenderView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedGender: String? = nil
@@ -43,12 +47,14 @@ struct OnboardingGenderView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
             }
-            .contentMargins(.bottom, 140, for: .scrollContent)
+            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, onboardingHorizontalPadding)
         .background(
             ZStack {
                 AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
@@ -82,7 +88,7 @@ struct OnboardingGenderView: View {
                     appState.setOnboardingGender(selectedGender)
                     appState.navigate(to: .onboardingTheme)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, onboardingButtonHorizontalPadding)
                 .padding(.bottom, 32)
                 .background(AppTheme.shared.current.colors.bgPrimary)
             }
@@ -136,12 +142,14 @@ struct OnboardingThemeView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
             }
-            .contentMargins(.bottom, 140, for: .scrollContent)
+            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, onboardingHorizontalPadding)
         .background(
             ZStack {
                 AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
@@ -171,7 +179,7 @@ struct OnboardingThemeView: View {
                 PrimaryButton("Continue") {
                     appState.navigate(to: .onboardingSkintype)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, onboardingButtonHorizontalPadding)
                 .padding(.bottom, 32)
                 .background(AppTheme.shared.current.colors.bgPrimary)
             }
@@ -240,12 +248,14 @@ struct OnboardingSkintypeView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
                 .padding(.top, 4)
             }
-            .contentMargins(.bottom, 140, for: .scrollContent)
+            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, onboardingHorizontalPadding)
         .background(
             ZStack {
                 AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
@@ -279,7 +289,7 @@ struct OnboardingSkintypeView: View {
                     appState.setOnboardingSkinTypes(selectedTypes)
                     appState.navigate(to: .onboardingGoal)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, onboardingButtonHorizontalPadding)
                 .padding(.bottom, 32)
                 .background(AppTheme.shared.current.colors.bgPrimary)
             }
@@ -333,12 +343,14 @@ struct OnboardingGoalView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
             }
-            .contentMargins(.bottom, 140, for: .scrollContent)
+            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, onboardingHorizontalPadding)
         .background(
             ZStack {
                 AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
@@ -372,7 +384,7 @@ struct OnboardingGoalView: View {
                     appState.setOnboardingGoal(selectedGoal)
                     appState.navigate(to: .onboardingRoutine)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, onboardingButtonHorizontalPadding)
                 .padding(.bottom, 32)
                 .background(AppTheme.shared.current.colors.bgPrimary)
             }
@@ -423,12 +435,14 @@ struct OnboardingRoutineView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
             }
-            .contentMargins(.bottom, 140, for: .scrollContent)
+            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, onboardingHorizontalPadding)
         .background(
             ZStack {
                 AppTheme.shared.current.colors.bgPrimary.ignoresSafeArea()
@@ -462,7 +476,7 @@ struct OnboardingRoutineView: View {
                     appState.setOnboardingRoutine(selectedRoutine)
                     appState.navigate(to: .onboardingRating)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, onboardingButtonHorizontalPadding)
                 .padding(.bottom, 32)
                 .background(AppTheme.shared.current.colors.bgPrimary)
             }

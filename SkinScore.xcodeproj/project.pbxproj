@@ -35,13 +35,11 @@
 		9C4ED0E866A6E6BFCD9AF2BF /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF5ACE23C04209C9D6C20F2 /* AppTheme.swift */; };
 		A21050ECE78D0564AECC633B /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */; };
 		A28AD350821DF4153C71BC05 /* ScanShareGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A891CDA9D7E392374D1D007 /* ScanShareGateView.swift */; };
-		A62BC1154ACBB353E5A17595 /* AnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86770BD61691AF985F2D234 /* AnalysisModels.swift */; };
 		A811BFCDF30151095BEDF0D8 /* SettingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E64E88ECAB4EDBD93C64528 /* SettingsRepository.swift */; };
 		AEF44CF9C53BE64743C85321 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14899046A1E3E0A07DF7618 /* AuthView.swift */; };
 		B83CC7D8B14DCAB76A7C1B27 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930F2E9BF4065C3B90C0E710 /* ImagePicker.swift */; };
 		BC421C060B7A5BEBDB5A1879 /* LocalUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5395692BEE9F1849D0BB9F /* LocalUser.swift */; };
 		CC93EEB7D93B9F9CCEE8CB31 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 231FA15202318184ACCA012E /* GoogleSignIn */; };
-		CE0AA1EABFDA1B5FED9BF143 /* ScreenState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50B5A1B7A70F218068849C2 /* ScreenState.swift */; };
 		D0F7D12CFECFB558C9CB011F /* AppLocalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BB1DF887C2D8BEFEF0823A /* AppLocalSettings.swift */; };
 		D16DFBFF07011995512D5785 /* OnboardingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EFD5C0B7C1935AC59CB6EAC /* OnboardingRepository.swift */; };
 		D9993F854F38ED9AD44E847C /* UploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C359E61981649D9015254352 /* UploadView.swift */; };
@@ -91,7 +89,6 @@
 		B962EF34BB460BBCF95C2268 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
 		BE1D96A6941AD800FBD5A828 /* SkinTypeChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinTypeChip.swift; sourceTree = "<group>"; };
 		C359E61981649D9015254352 /* UploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadView.swift; sourceTree = "<group>"; };
-		C86770BD61691AF985F2D234 /* AnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisModels.swift; sourceTree = "<group>"; };
 		C939BD0356C83EE58357683E /* UIApplication+TopViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIApplication+TopViewController.swift"; sourceTree = "<group>"; };
 		CA036E8B6A7F92AFD1C5D01E /* RemainingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemainingViews.swift; sourceTree = "<group>"; };
 		D14899046A1E3E0A07DF7618 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
@@ -101,7 +98,6 @@
 		EA4BA95003EEE7ECE6C5E8CF /* SkinScoreApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinScoreApp.swift; sourceTree = "<group>"; };
 		EABC74139F7D86A2F25167BE /* SkinAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinAnalysisService.swift; sourceTree = "<group>"; };
 		EE69A8F717CD30675B3989B2 /* RoutineCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineCard.swift; sourceTree = "<group>"; };
-		F50B5A1B7A70F218068849C2 /* ScreenState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,7 +135,6 @@
 		0414483F24C43F5B46419401 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				F50B5A1B7A70F218068849C2 /* ScreenState.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -246,7 +241,6 @@
 		8C68EE11B0174C738ACEE43A /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				C86770BD61691AF985F2D234 /* AnalysisModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -430,7 +424,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A62BC1154ACBB353E5A17595 /* AnalysisModels.swift in Sources */,
 				F37ABB01278A2137868A907D /* AnalysisRepository.swift in Sources */,
 				A21050ECE78D0564AECC633B /* AppConfig.swift in Sources */,
 				D0F7D12CFECFB558C9CB011F /* AppLocalSettings.swift in Sources */,
@@ -462,7 +455,6 @@
 				07FDFC52AA50A38D8AF85B49 /* RoutineCard.swift in Sources */,
 				5E495092CDAFCBD90D76E0D3 /* ScanPrepView.swift in Sources */,
 				A28AD350821DF4153C71BC05 /* ScanShareGateView.swift in Sources */,
-				CE0AA1EABFDA1B5FED9BF143 /* ScreenState.swift in Sources */,
 				A811BFCDF30151095BEDF0D8 /* SettingsRepository.swift in Sources */,
 				66B0224CC0E3768AE5BA6A53 /* SkinAnalysisService.swift in Sources */,
 				2810C775A68DB8F640F69F4C /* SkinScoreApp.swift in Sources */,

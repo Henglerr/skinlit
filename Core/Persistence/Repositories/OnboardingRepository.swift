@@ -45,15 +45,6 @@ public final class OnboardingRepository {
         try context.save()
     }
 
-    public func decodedSkinTypes(for userId: String) throws -> [String] {
-        guard let profile = try profile(userId: userId), !profile.skinTypesCSV.isEmpty else {
-            return []
-        }
-        return profile.skinTypesCSV
-            .components(separatedBy: separator)
-            .filter { !$0.isEmpty }
-    }
-
     public func reassignProfile(from oldUserId: String, to newUserId: String) throws {
         guard oldUserId != newUserId else { return }
         guard let oldProfile = try profile(userId: oldUserId) else { return }

@@ -73,7 +73,7 @@ public struct SkinTypeChip: View {
                 RoundedRectangle(cornerRadius: 20)
                     .stroke(isSelected ? AppTheme.shared.current.colors.accent : Color.clear, lineWidth: 1.5)
             )
-            .scaleEffect(isPressed ? AppTheme.shared.current.motion.pressScale : (isSelected ? 1.02 : 1.0))
+            .scaleEffect(isPressed ? AppTheme.shared.current.motion.pressScale : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isSelected)
         }
