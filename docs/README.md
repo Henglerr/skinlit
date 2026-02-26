@@ -19,10 +19,10 @@ This folder contains the public legal pages used by the iOS app:
 
 Expected base URL:
 
-`https://henglerr.github.io/Skinapp/`
+`https://henglerr.github.io/SkinappIOSready/`
 
 Final links:
 
-- `https://henglerr.github.io/Skinapp/privacy.html`
-- `https://henglerr.github.io/Skinapp/terms.html`
-- `https://henglerr.github.io/Skinapp/support.html`
+- `https://henglerr.github.io/SkinappIOSready/privacy.html`
+- `https://henglerr.github.io/SkinappIOSready/terms.html`
+- `https://henglerr.github.io/SkinappIOSready/support.html`

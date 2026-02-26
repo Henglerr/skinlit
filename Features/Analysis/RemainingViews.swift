@@ -305,7 +305,7 @@ struct PaywallView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [
-                "I’m using Skin Score to track my cosmetic skin progress with AI. Check it out 👇 https://github.com/Henglerr/Skinapp"
+                "I’m using Skin Score to track my cosmetic skin progress with AI. Check it out 👇 https://github.com/Henglerr/SkinappIOSready"
             ]) {
                 appState.recordReferralShare()
             }

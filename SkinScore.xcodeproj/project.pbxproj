@@ -544,7 +544,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
 				SDKROOT = iphoneos;
 				SKIN_ANALYSIS_API_AUTH_TOKEN = "";
-				SKIN_ANALYSIS_API_ENDPOINT = "https://api.example.com/v1/skin-analysis";
+				SKIN_ANALYSIS_API_ENDPOINT = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -565,7 +565,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
 				SDKROOT = iphoneos;
 				SKIN_ANALYSIS_API_AUTH_TOKEN = "";
-				SKIN_ANALYSIS_API_ENDPOINT = "https://api.example.com/v1/skin-analysis";
+				SKIN_ANALYSIS_API_ENDPOINT = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
