@@ -6,8 +6,10 @@ import UIKit
 @MainActor
 public final class LocalAuthService: AuthService {
     private let userRepository: UserRepository
+    private let onboardingDraftRepository: OnboardingDraftRepository
     private let onboardingRepository: OnboardingRepository
     private let analysisRepository: AnalysisRepository
+    private let skinJourneyRepository: SkinJourneyRepository
     private let settingsRepository: SettingsRepository
     private let keychainStore: KeychainStore
 
@@ -15,14 +17,18 @@ public final class LocalAuthService: AuthService {
 
     public init(
         userRepository: UserRepository,
+        onboardingDraftRepository: OnboardingDraftRepository,
         onboardingRepository: OnboardingRepository,
         analysisRepository: AnalysisRepository,
+        skinJourneyRepository: SkinJourneyRepository,
         settingsRepository: SettingsRepository,
         keychainStore: KeychainStore = KeychainStore()
     ) {
         self.userRepository = userRepository
+        self.onboardingDraftRepository = onboardingDraftRepository
         self.onboardingRepository = onboardingRepository
         self.analysisRepository = analysisRepository
+        self.skinJourneyRepository = skinJourneyRepository
         self.settingsRepository = settingsRepository
         self.keychainStore = keychainStore
     }
@@ -147,6 +153,8 @@ public final class LocalAuthService: AuthService {
             }
 
             try analysisRepository.deleteAnalyses(userId: session.localUserId)
+            try onboardingDraftRepository.deleteDraft(userId: session.localUserId)
+            try skinJourneyRepository.deleteLogs(userId: session.localUserId)
             try onboardingRepository.deleteProfile(userId: session.localUserId)
             try userRepository.deleteUser(id: session.localUserId)
             try await invalidateSession()
@@ -176,6 +184,8 @@ public final class LocalAuthService: AuthService {
            previousSession.provider == .guest,
            previousSession.localUserId != targetUser.id {
             try analysisRepository.reassignAnalyses(from: previousSession.localUserId, to: targetUser.id)
+            try onboardingDraftRepository.reassignDraft(from: previousSession.localUserId, to: targetUser.id)
+            try skinJourneyRepository.reassignLogs(from: previousSession.localUserId, to: targetUser.id)
             try onboardingRepository.reassignProfile(from: previousSession.localUserId, to: targetUser.id)
         }
 

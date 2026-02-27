@@ -26,6 +26,11 @@ struct HomeView: View {
     @State private var orbScale: CGFloat = 1.0
     @State private var selectedAnalysisId: String? = nil
     @State private var showDeleteAccountAlert = false
+    @State private var selectedJourneyDate = SkinJourneyRepository.startOfDay(for: Date())
+    @State private var displayedJourneyMonth = Calendar.autoupdatingCurrent.date(
+        from: Calendar.autoupdatingCurrent.dateComponents([.year, .month], from: Date())
+    ) ?? SkinJourneyRepository.startOfDay(for: Date())
+    @State private var isJourneySheetPresented = false
 
     // ── Derived from real analysis data ──────────────────────────────────────
     private var mostRecentAnalysis: LocalAnalysis? { appState.recentAnalyses.first }
@@ -39,6 +44,11 @@ struct HomeView: View {
     private var latestCriteria: [String: Double] {
         guard let activeAnalysis else { return [:] }
         return criteria(from: activeAnalysis)
+    }
+
+    private var latestJourneyCriteria: [String: Double] {
+        guard let mostRecentAnalysis else { return [:] }
+        return criteria(from: mostRecentAnalysis)
     }
 
     // Build score history from real analyses (chronological)
@@ -95,58 +105,7 @@ struct HomeView: View {
 
             VStack(spacing: 0) {
                 // ── Header ────────────────────────────────────────────────────
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("My Skin")
-                            .font(.system(size: 30, weight: .heavy))
-                            .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                        Text("Track your skin's progress")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                    }
-                    Spacer()
-                    HStack(spacing: 10) {
-                        homeTabPill(label: "Home",      tab: .home)
-                        homeTabPill(label: "Deep Dive", tab: .deepDive)
-
-                        Menu {
-                            Button {
-                                Task { _ = await appState.restoreSubscriptions() }
-                            } label: {
-                                Label("Restore Purchases", systemImage: "arrow.clockwise")
-                            }
-
-                            Button {
-                                appState.navigate(to: .shareGate)
-                            } label: {
-                                Label("Share App", systemImage: "square.and.arrow.up")
-                            }
-
-                            Button {
-                                Task { await appState.signOut() }
-                            } label: {
-                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                            }
-
-                            Button(role: .destructive) {
-                                showDeleteAccountAlert = true
-                            } label: {
-                                Label("Delete Account", systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "person.crop.circle")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                                .frame(width: 34, height: 34)
-                                .background(AppTheme.shared.current.colors.surface)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
-                                        .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.07), lineWidth: 1)
-                                )
-                        }
-                    }
-                }
+                headerView
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 .padding(.bottom, 14)
@@ -170,6 +129,7 @@ struct HomeView: View {
         .navigationBarHidden(true)
         .onAppear {
             appState.refreshRecentAnalyses()
+            appState.refreshSkinJourneyLogs()
             consumeDeepDiveIntentIfNeeded()
         }
         .onChange(of: appState.shouldOpenHomeDeepDive) { _, _ in
@@ -188,9 +148,121 @@ struct HomeView: View {
         } message: {
             Text("This permanently removes your local profile and analysis history from this device.")
         }
+        .sheet(isPresented: $isJourneySheetPresented) {
+            SkinJourneyLogSheet(
+                date: selectedJourneyDate,
+                existingLog: appState.skinJourneyLog(on: selectedJourneyDate),
+                onSave: { routineStepIDs, treatmentIDs, skinStatusIDs, note in
+                    appState.saveSkinJourneyLog(
+                        date: selectedJourneyDate,
+                        routineStepIDs: routineStepIDs,
+                        treatmentIDs: treatmentIDs,
+                        skinStatusIDs: skinStatusIDs,
+                        note: note
+                    )
+                },
+                onDelete: appState.skinJourneyLog(on: selectedJourneyDate) == nil ? nil : {
+                    appState.deleteSkinJourneyLog(date: selectedJourneyDate)
+                }
+            )
+        }
     }
 
     // MARK: - Tab Pill
+
+    private var headerView: some View {
+        ViewThatFits(in: .horizontal) {
+            headerInlineLayout
+            headerStackedLayout
+        }
+    }
+
+    private var headerInlineLayout: some View {
+        HStack(alignment: .center, spacing: 12) {
+            headerTitle
+            Spacer(minLength: 12)
+            headerControls
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private var headerStackedLayout: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                headerTitle
+                Spacer(minLength: 12)
+                accountMenuButton
+            }
+
+            HStack(spacing: 10) {
+                homeTabPill(label: "Home", tab: .home)
+                homeTabPill(label: "Deep Dive", tab: .deepDive)
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var headerTitle: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("My Skin")
+                .font(.system(size: 30, weight: .heavy))
+                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
+            Text("Track your skin's progress")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
+        }
+    }
+
+    private var headerControls: some View {
+        HStack(spacing: 10) {
+            homeTabPill(label: "Home", tab: .home)
+            homeTabPill(label: "Deep Dive", tab: .deepDive)
+            accountMenuButton
+        }
+    }
+
+    private var accountMenuButton: some View {
+        Menu {
+            Button {
+                Task { _ = await appState.restoreSubscriptions() }
+            } label: {
+                Label("Restore Purchases", systemImage: "arrow.clockwise")
+            }
+
+            Button {
+                appState.navigate(to: .shareGate)
+            } label: {
+                Label("Share App", systemImage: "square.and.arrow.up")
+            }
+
+            Button {
+                Task { await appState.signOut() }
+            } label: {
+                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+
+            Button(role: .destructive) {
+                showDeleteAccountAlert = true
+            } label: {
+                Label("Delete Account", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                .frame(width: 34, height: 34)
+                .background(AppTheme.shared.current.colors.surface)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.07), lineWidth: 1)
+                )
+        }
+    }
 
     @ViewBuilder
     private func homeTabPill(label: String, tab: HomeTab) -> some View {
@@ -201,10 +273,13 @@ struct HomeView: View {
             Text(label)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(sel ? AppTheme.shared.current.colors.bgPrimary : AppTheme.shared.current.colors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
                 .padding(.horizontal, 14).padding(.vertical, 7)
                 .background(sel ? AppTheme.shared.current.colors.textPrimary : Color.clear)
                 .clipShape(Capsule())
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     // MARK: - Home Tab
@@ -292,6 +367,23 @@ struct HomeView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                                 appState.navigate(to: .upload)
                             }
+                        }
+                    )
+
+                    SkinJourneySection(
+                        logs: appState.skinJourneyLogs,
+                        latestAnalysis: mostRecentAnalysis,
+                        latestCriteria: latestJourneyCriteria,
+                        selectedDate: $selectedJourneyDate,
+                        displayedMonth: $displayedJourneyMonth,
+                        onLogToday: {
+                            openJourneyEditor(for: Date())
+                        },
+                        onEditSelectedDay: {
+                            openJourneyEditor(for: selectedJourneyDate)
+                        },
+                        onLogSelectedDay: {
+                            openJourneyEditor(for: selectedJourneyDate)
                         }
                     )
 
@@ -655,6 +747,18 @@ struct HomeView: View {
         }
         appState.shouldOpenHomeDeepDive = false
         appState.homeDeepDiveAnalysisId = nil
+    }
+
+    private func openJourneyEditor(for date: Date) {
+        let normalizedDay = SkinJourneyRepository.startOfDay(for: date)
+        let today = SkinJourneyRepository.startOfDay(for: Date())
+        guard normalizedDay <= today else { return }
+
+        selectedJourneyDate = normalizedDay
+        displayedJourneyMonth = Calendar.autoupdatingCurrent.date(
+            from: Calendar.autoupdatingCurrent.dateComponents([.year, .month], from: normalizedDay)
+        ) ?? normalizedDay
+        isJourneySheetPresented = true
     }
 }
 

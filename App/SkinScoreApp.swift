@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
 import GoogleSignIn
+import UserNotifications
 
 @main
 struct SkinScoreApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     private let modelContainer: ModelContainer
     @StateObject private var appState: AppState
 
@@ -14,25 +16,37 @@ struct SkinScoreApp: App {
 
             let context = ModelContext(container)
             let userRepository = UserRepository(context: context)
+            let onboardingDraftRepository = OnboardingDraftRepository(context: context)
             let onboardingRepository = OnboardingRepository(context: context)
             let analysisRepository = AnalysisRepository(context: context)
+            let skinJourneyRepository = SkinJourneyRepository(context: context)
             let settingsRepository = SettingsRepository(context: context)
+            let notificationCenter = UNUserNotificationCenter.current()
+            let notificationService = LocalNotificationService(center: notificationCenter)
             let billingService = StoreKitBillingService(productIDs: AppConfig.subscriptionProductIds)
             let skinAnalysisService = CompositeSkinAnalysisService()
             let faceDetectionService = VisionFaceDetectionService()
 
+            notificationCenter.delegate = notificationService
+
             let authService = LocalAuthService(
                 userRepository: userRepository,
+                onboardingDraftRepository: onboardingDraftRepository,
                 onboardingRepository: onboardingRepository,
                 analysisRepository: analysisRepository,
+                skinJourneyRepository: skinJourneyRepository,
                 settingsRepository: settingsRepository
             )
 
             _appState = StateObject(
                 wrappedValue: AppState(
                     authService: authService,
+                    onboardingDraftRepository: onboardingDraftRepository,
                     onboardingRepository: onboardingRepository,
                     analysisRepository: analysisRepository,
+                    skinJourneyRepository: skinJourneyRepository,
+                    settingsRepository: settingsRepository,
+                    notificationService: notificationService,
                     billingService: billingService,
                     skinAnalysisService: skinAnalysisService,
                     faceDetectionService: faceDetectionService
@@ -48,6 +62,14 @@ struct SkinScoreApp: App {
             RootView()
                 .environmentObject(appState)
                 .modelContainer(modelContainer)
+                .task {
+                    await appState.handleScenePhase(scenePhase)
+                }
+                .onChange(of: scenePhase) { _, newValue in
+                    Task {
+                        await appState.handleScenePhase(newValue)
+                    }
+                }
                 .onOpenURL { url in
                     _ = GIDSignIn.sharedInstance.handle(url)
                 }

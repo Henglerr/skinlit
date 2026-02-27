@@ -17,7 +17,6 @@ public struct AppConfig {
 
     static let subscriptionProductIds = [
         "com.skinscore.pro.weekly",
-        "com.skinscore.pro.monthly",
         "com.skinscore.pro.yearly"
     ]
 

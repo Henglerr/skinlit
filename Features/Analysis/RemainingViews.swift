@@ -270,14 +270,14 @@ struct PaywallView: View {
                         Button {
                             showShareSheet = true
                         } label: {
-                            Text("Share SkinScore with a Friend (Optional)")
+                            Text("Unlock 1 extra scan after 2 friend sign-ups")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                                 .underline()
                         }
 
                         VStack(spacing: 8) {
-                            Text("Subscription renews automatically unless cancelled at least 24 hours before period end. Manage anytime in App Store account settings.")
+                            Text(autoRenewCopy)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                                 .multilineTextAlignment(.center)
@@ -306,8 +306,8 @@ struct PaywallView: View {
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [
                 "I’m using Skin Score to track my cosmetic skin progress with AI. Check it out 👇 https://github.com/Henglerr/SkinappIOSready"
-            ]) {
-                appState.recordReferralShare()
+            ]) { activityType in
+                appState.recordReferralShareAttempt(activityType: activityType)
             }
         }
         .onAppear {
@@ -332,6 +332,22 @@ struct PaywallView: View {
             return "Start \(trial)"
         }
         return "Subscribe Now"
+    }
+
+    private var autoRenewCopy: String {
+        if let trial = selectedPlan?.trialDescription, !trial.isEmpty {
+            return "\(trial), then \(selectedPlan?.priceText ?? "") per \(billingPeriodLabel). Auto-renews unless cancelled at least 24 hours before period end. Manage anytime in App Store account settings."
+        }
+
+        return "Subscription renews automatically unless cancelled at least 24 hours before period end. Manage anytime in App Store account settings."
+    }
+
+    private var billingPeriodLabel: String {
+        let planId = resolvedSelectedPlanId.lowercased()
+        if planId.contains("week") { return "week" }
+        if planId.contains("year") || planId.contains("annual") { return "year" }
+        if planId.contains("month") { return "month" }
+        return "period"
     }
 }
 

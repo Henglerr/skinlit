@@ -77,6 +77,11 @@ public final class AnalysisRepository {
         return try context.fetch(descriptor)
     }
 
+    public func totalAnalysisCount() throws -> Int {
+        let descriptor = FetchDescriptor<LocalAnalysis>()
+        return try context.fetchCount(descriptor)
+    }
+
     public func reassignAnalyses(from oldUserId: String, to newUserId: String) throws {
         guard oldUserId != newUserId else { return }
         let predicate = #Predicate<LocalAnalysis> { $0.userId == oldUserId }

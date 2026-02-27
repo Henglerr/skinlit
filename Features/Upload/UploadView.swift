@@ -81,7 +81,7 @@ struct UploadView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "lock.fill")
                             .foregroundColor(AppTheme.shared.current.colors.warning)
-                        Text("You used your \(AppState.freeScanQuota) free scans. Upgrade to PRO for unlimited scans.")
+                        Text("You used your \(AppState.freeScanQuota) free scans. Upgrade to PRO or unlock more with 2 validated referrals.")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textPrimary)
                             .multilineTextAlignment(.leading)
@@ -137,7 +137,7 @@ struct UploadView: View {
                     }
 
                     Button(action: { appState.navigate(to: .shareGate) }) {
-                        Text("Share SkinScore with a Friend (Optional)")
+                        Text("Unlock 1 extra scan after 2 friend sign-ups")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                             .underline()

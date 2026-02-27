@@ -53,15 +53,19 @@ private enum ImageFingerprint {
 }
 
 #if DEBUG
-private let RESET_ONBOARDING_EACH_LAUNCH = true
+private let RESET_ONBOARDING_EACH_LAUNCH = false
 #endif
 
 @MainActor
 public class AppState: ObservableObject {
     private static let analysisCacheVersion = "2026-02-24-proxy-v1"
     private let authService: AuthService
+    private let onboardingDraftRepository: OnboardingDraftRepository
     private let onboardingRepository: OnboardingRepository
     private let analysisRepository: AnalysisRepository
+    private let skinJourneyRepository: SkinJourneyRepository
+    private let settingsRepository: SettingsRepository
+    private let notificationService: NotificationService
     private let billingService: BillingService
     private let skinAnalysisService: SkinAnalysisService
     private let faceDetectionService: FaceDetectionService
@@ -71,7 +75,10 @@ public class AppState: ObservableObject {
     @Published public var isAuthenticated: Bool = false
     @Published public var hasCompletedOnboarding: Bool = false
     @AppStorage("appTheme") public var appTheme: String = "pastel"
+    @AppStorage("installConsumedFreeScans") public var installConsumedFreeScans: Int = 0
+    @AppStorage("didMigrateInstallConsumedFreeScans") private var didMigrateInstallConsumedFreeScans: Bool = false
     @AppStorage("referralShareCount") public var referralShareCount: Int = 0
+    @AppStorage("validatedReferralCount") public var validatedReferralCount: Int = 0
     @Published public var isBootstrapping: Bool = true
     @Published public var isAuthLoading: Bool = false
     @Published public var authErrorMessage: String? = nil
@@ -85,6 +92,8 @@ public class AppState: ObservableObject {
     @Published public var onboardingDraftGoal: String? = nil
     @Published public var onboardingDraftRoutine: String? = nil
     @Published public var recentAnalyses: [LocalAnalysis] = []
+    @Published public var skinJourneyLogs: [SkinJourneyLog] = []
+    @Published public var notificationPromptState: NotificationPromptState = .neverAsked
 
     @Published public var isProActive: Bool = false
     @Published public var subscriptionPlanId: String? = nil
@@ -95,25 +104,51 @@ public class AppState: ObservableObject {
 
     public static let freeScanQuota = 2
 
+    public var referralBonusScansEarned: Int {
+        validatedReferralCount / 2
+    }
+
+    public var totalFreeScanAllowance: Int {
+        Self.freeScanQuota + referralBonusScansEarned
+    }
+
+    public var validatedReferralsUntilNextFreeScan: Int {
+        let progress = validatedReferralCount % 2
+        return progress == 0 ? 2 : 1
+    }
+
     public var remainingFreeScans: Int {
-        max(0, Self.freeScanQuota - recentAnalyses.count)
+        max(0, totalFreeScanAllowance - installConsumedFreeScans)
     }
 
     public var canRunScan: Bool {
-        isProActive || recentAnalyses.count < Self.freeScanQuota
+        isProActive || installConsumedFreeScans < totalFreeScanAllowance
+    }
+
+    public var canEarnReferralRewards: Bool {
+        guard let session = currentSession else { return false }
+        return session.provider != .guest
     }
 
     public init(
         authService: AuthService,
+        onboardingDraftRepository: OnboardingDraftRepository,
         onboardingRepository: OnboardingRepository,
         analysisRepository: AnalysisRepository,
+        skinJourneyRepository: SkinJourneyRepository,
+        settingsRepository: SettingsRepository,
+        notificationService: NotificationService,
         billingService: BillingService,
         skinAnalysisService: SkinAnalysisService,
         faceDetectionService: FaceDetectionService
     ) {
         self.authService = authService
+        self.onboardingDraftRepository = onboardingDraftRepository
         self.onboardingRepository = onboardingRepository
         self.analysisRepository = analysisRepository
+        self.skinJourneyRepository = skinJourneyRepository
+        self.settingsRepository = settingsRepository
+        self.notificationService = notificationService
         self.billingService = billingService
         self.skinAnalysisService = skinAnalysisService
         self.faceDetectionService = faceDetectionService
@@ -148,8 +183,13 @@ public class AppState: ObservableObject {
         isGoogleConfigured = authService.isGoogleSignInAvailable
         defer { isBootstrapping = false }
 
+        hydrateInstallFreeScanUsageIfNeeded()
+        loadStoredNotificationPromptState()
+
         let restoredSession = await authService.restoreSession()
         guard let restoredSession else {
+            await notificationService.cancelReengagementNotifications()
+            _ = notificationService.consumePendingOpenIntent()
             resetSessionStateToSignedOut()
             presentAsRoot(.auth)
             return
@@ -158,9 +198,11 @@ public class AppState: ObservableObject {
 #if DEBUG
         if RESET_ONBOARDING_EACH_LAUNCH {
             try? onboardingRepository.resetOnboarding(userId: restoredSession.localUserId)
+            try? onboardingDraftRepository.deleteDraft(userId: restoredSession.localUserId)
         }
 #endif
 
+        _ = await synchronizeNotificationAuthorizationStatus()
         await setAuthenticatedState(with: restoredSession)
     }
 
@@ -210,6 +252,8 @@ public class AppState: ObservableObject {
             authErrorMessage = userFacingError(from: error)
         }
 
+        await notificationService.cancelReengagementNotifications()
+        _ = notificationService.consumePendingOpenIntent()
         resetSessionStateToSignedOut()
         presentAsRoot(.auth)
     }
@@ -217,6 +261,8 @@ public class AppState: ObservableObject {
     public func deleteAccount() async {
         do {
             try await authService.deleteAccount()
+            await notificationService.cancelReengagementNotifications()
+            _ = notificationService.consumePendingOpenIntent()
             resetSessionStateToSignedOut()
             presentAsRoot(.auth)
         } catch {
@@ -226,18 +272,76 @@ public class AppState: ObservableObject {
 
     public func setOnboardingGender(_ gender: String?) {
         onboardingDraftGender = gender
+        persistOnboardingDraft(lastCompletedStep: .gender)
     }
 
     public func setOnboardingSkinTypes(_ skinTypes: Set<String>) {
         onboardingDraftSkinTypes = skinTypes
+        persistOnboardingDraft(lastCompletedStep: .skintype)
     }
 
     public func setOnboardingGoal(_ goal: String?) {
         onboardingDraftGoal = goal
+        persistOnboardingDraft(lastCompletedStep: .goal)
     }
 
     public func setOnboardingRoutine(_ routine: String?) {
         onboardingDraftRoutine = routine
+        persistOnboardingDraft(lastCompletedStep: .routine)
+    }
+
+    public func completeOnboardingThemeSelection() {
+        persistOnboardingDraft(lastCompletedStep: .theme)
+    }
+
+    public var shouldPromptForNotificationPermission: Bool {
+        notificationPromptState == .neverAsked
+    }
+
+    public func recordNotificationSoftDecline() async {
+        let promptedAt = Date()
+        do {
+            try settingsRepository.setNotificationPromptState(.softDeclined, promptedAt: promptedAt)
+            try settingsRepository.setNotificationAuthorizationStatus(.notDetermined)
+            notificationPromptState = .softDeclined
+        } catch {}
+
+        await notificationService.cancelReengagementNotifications()
+    }
+
+    public func requestNotificationAuthorizationFromOnboarding() async {
+        let promptedAt = Date()
+        let promptResult = await notificationService.requestAuthorization()
+
+        do {
+            try settingsRepository.setNotificationPromptState(promptResult, promptedAt: promptedAt)
+            notificationPromptState = promptResult
+        } catch {}
+
+        let authorizationStatus = await synchronizeNotificationAuthorizationStatus()
+        if authorizationStatus.isAuthorized {
+            await refreshReengagementNotifications()
+        } else {
+            await notificationService.cancelReengagementNotifications()
+        }
+    }
+
+    public func handleScenePhase(_ scenePhase: ScenePhase) async {
+        guard scenePhase == .active else { return }
+
+        do {
+            try settingsRepository.setLastActiveAt(.now)
+        } catch {}
+
+        _ = await synchronizeNotificationAuthorizationStatus()
+
+        if currentSession != nil {
+            await refreshReengagementNotifications()
+            await consumePendingNotificationIntentIfNeeded()
+        } else {
+            await notificationService.cancelReengagementNotifications()
+            _ = notificationService.consumePendingOpenIntent()
+        }
     }
 
     public func completeOnboardingFromDraft() async {
@@ -258,11 +362,14 @@ public class AppState: ObservableObject {
                 goal: goal,
                 routine: routine
             )
+            try onboardingDraftRepository.deleteDraft(userId: session.localUserId)
             hasCompletedOnboarding = true
             clearOnboardingDraft()
             try loadRecentAnalyses(for: session.localUserId)
+            try loadSkinJourneyLogs(for: session.localUserId)
             presentAsRoot(.home)
             await refreshPaywallData()
+            await refreshReengagementNotifications()
         } catch {
             authErrorMessage = "Could not save onboarding preferences locally."
         }
@@ -289,7 +396,13 @@ public class AppState: ObservableObject {
                 imageHash: imageHash,
                 criteriaJSON: criteriaJSON
             )
+            if !isProActive {
+                installConsumedFreeScans += 1
+            }
             try loadRecentAnalyses(for: userId)
+            Task {
+                await refreshReengagementNotifications()
+            }
         } catch {
             authErrorMessage = "Could not save this analysis."
         }
@@ -306,6 +419,59 @@ public class AppState: ObservableObject {
         } catch {
             authErrorMessage = "Could not load recent analyses."
         }
+    }
+
+    public func refreshSkinJourneyLogs() {
+        guard let userId = currentSession?.localUserId else {
+            skinJourneyLogs = []
+            return
+        }
+
+        do {
+            try loadSkinJourneyLogs(for: userId)
+        } catch {
+            authErrorMessage = "Could not load your skin journey."
+        }
+    }
+
+    public func saveSkinJourneyLog(
+        date: Date,
+        routineStepIDs: [String],
+        treatmentIDs: [String],
+        skinStatusIDs: [String],
+        note: String
+    ) {
+        guard let userId = currentSession?.localUserId else { return }
+
+        do {
+            try skinJourneyRepository.upsertLog(
+                userId: userId,
+                date: date,
+                routineStepIDs: routineStepIDs,
+                treatmentIDs: treatmentIDs,
+                skinStatusIDs: skinStatusIDs,
+                note: note
+            )
+            try loadSkinJourneyLogs(for: userId)
+        } catch {
+            authErrorMessage = "Could not save your skin journey."
+        }
+    }
+
+    public func deleteSkinJourneyLog(date: Date) {
+        guard let userId = currentSession?.localUserId else { return }
+
+        do {
+            try skinJourneyRepository.deleteLog(userId: userId, date: date)
+            try loadSkinJourneyLogs(for: userId)
+        } catch {
+            authErrorMessage = "Could not delete this skin journey log."
+        }
+    }
+
+    public func skinJourneyLog(on date: Date) -> SkinJourneyLog? {
+        let calendar = Calendar.autoupdatingCurrent
+        return skinJourneyLogs.first { calendar.isDate($0.dayStartAt, inSameDayAs: date) }
     }
 
     public func queueScanImageData(_ imageData: Data) {
@@ -338,6 +504,7 @@ public class AppState: ObservableObject {
                 if let existing = try analysisRepository.analysis(byImageHash: imageHash, userId: userId) {
                     try analysisRepository.touchAnalysis(id: existing.id)
                     try loadRecentAnalyses(for: userId)
+                    await refreshReengagementNotifications()
                     scanErrorMessage = nil
                     return existing.id
                 }
@@ -417,8 +584,15 @@ public class AppState: ObservableObject {
         presentAsRoot(.home)
     }
 
-    public func recordReferralShare() {
+    public func recordReferralShareAttempt(activityType: UIActivity.ActivityType?) {
+        guard canEarnReferralRewards else { return }
+        guard isEligibleReferralActivity(activityType) else { return }
         referralShareCount += 1
+    }
+
+    public func recordValidatedReferral(count: Int = 1) {
+        guard count > 0 else { return }
+        validatedReferralCount += count
     }
 
     private func setAuthenticatedState(with session: AuthSession) async {
@@ -429,21 +603,38 @@ public class AppState: ObservableObject {
         do {
             hasCompletedOnboarding = try onboardingRepository.hasCompletedOnboarding(userId: session.localUserId)
             if hasCompletedOnboarding {
+                try onboardingDraftRepository.deleteDraft(userId: session.localUserId)
+                clearOnboardingDraft()
                 try loadRecentAnalyses(for: session.localUserId)
+                try loadSkinJourneyLogs(for: session.localUserId)
                 presentAsRoot(.home)
             } else {
-                presentAsRoot(.onboardingGender)
+                recentAnalyses = []
+                skinJourneyLogs = []
+                try loadPersistedOnboardingDraft(for: session.localUserId)
+                let resumeRoute = try onboardingDraftRepository.nextRoute(userId: session.localUserId) ?? .onboardingGender
+                presentAsRoot(resumeRoute)
             }
         } catch {
             hasCompletedOnboarding = false
-            presentAsRoot(.onboardingGender)
+            recentAnalyses = []
+            skinJourneyLogs = []
+            try? loadPersistedOnboardingDraft(for: session.localUserId)
+            let resumeRoute = (try? onboardingDraftRepository.nextRoute(userId: session.localUserId)) ?? .onboardingGender
+            presentAsRoot(resumeRoute)
         }
 
         await refreshPaywallData()
+        await refreshReengagementNotifications()
+        await consumePendingNotificationIntentIfNeeded()
     }
 
     private func loadRecentAnalyses(for userId: String) throws {
         recentAnalyses = try analysisRepository.fetchRecentAnalyses(userId: userId, limit: 20)
+    }
+
+    private func loadSkinJourneyLogs(for userId: String) throws {
+        skinJourneyLogs = try skinJourneyRepository.fetchLogs(userId: userId)
     }
 
     private func loadPaywallPackages() async {
@@ -469,11 +660,156 @@ public class AppState: ObservableObject {
         }
     }
 
+    private func hydrateInstallFreeScanUsageIfNeeded() {
+        guard !didMigrateInstallConsumedFreeScans else { return }
+
+        let migratedUsage: Int
+        do {
+            migratedUsage = min(Self.freeScanQuota, try analysisRepository.totalAnalysisCount())
+        } catch {
+            migratedUsage = installConsumedFreeScans
+        }
+
+        installConsumedFreeScans = max(installConsumedFreeScans, migratedUsage)
+        didMigrateInstallConsumedFreeScans = true
+    }
+
+    private func loadStoredNotificationPromptState() {
+        notificationPromptState = (try? settingsRepository.notificationPromptState()) ?? .neverAsked
+    }
+
+    @discardableResult
+    private func synchronizeNotificationAuthorizationStatus() async -> NotificationAuthorizationStatus {
+        let authorizationStatus = await notificationService.refreshAuthorizationStatus()
+
+        do {
+            try settingsRepository.setNotificationAuthorizationStatus(authorizationStatus)
+
+            switch authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                try settingsRepository.setNotificationPromptState(.authorized)
+                notificationPromptState = .authorized
+            case .denied:
+                try settingsRepository.setNotificationPromptState(.systemDenied)
+                notificationPromptState = .systemDenied
+            case .notDetermined:
+                notificationPromptState = try settingsRepository.notificationPromptState()
+            }
+        } catch {
+            switch authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                notificationPromptState = .authorized
+            case .denied:
+                notificationPromptState = .systemDenied
+            case .notDetermined:
+                break
+            }
+        }
+
+        return authorizationStatus
+    }
+
+    private func persistOnboardingDraft(lastCompletedStep: OnboardingDraftStep) {
+        guard let userId = currentSession?.localUserId else { return }
+
+        do {
+            try onboardingDraftRepository.saveDraft(
+                userId: userId,
+                gender: onboardingDraftGender,
+                skinTypes: onboardingDraftSkinTypes.sorted(),
+                goal: onboardingDraftGoal,
+                routine: onboardingDraftRoutine,
+                lastCompletedStep: lastCompletedStep
+            )
+        } catch {
+            authErrorMessage = "Could not save onboarding progress locally."
+        }
+
+        Task {
+            await refreshReengagementNotifications()
+        }
+    }
+
+    private func loadPersistedOnboardingDraft(for userId: String) throws {
+        guard let draft = try onboardingDraftRepository.draft(userId: userId) else {
+            clearOnboardingDraft()
+            return
+        }
+
+        onboardingDraftGender = draft.gender
+        onboardingDraftSkinTypes = Set(onboardingDraftRepository.skinTypes(for: draft))
+        onboardingDraftGoal = draft.goal
+        onboardingDraftRoutine = draft.routine
+    }
+
+    private func buildReengagementContext() -> ReengagementContext? {
+        guard let session = currentSession else { return nil }
+
+        let profile = try? onboardingRepository.profile(userId: session.localUserId)
+        let resumeRoute = hasCompletedOnboarding
+            ? nil
+            : (try? onboardingDraftRepository.nextRoute(userId: session.localUserId))
+
+        return ReengagementContext(
+            userId: session.localUserId,
+            goal: hasCompletedOnboarding ? profile?.goal ?? onboardingDraftGoal : onboardingDraftGoal,
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            hasAnyScan: !recentAnalyses.isEmpty,
+            lastActiveAt: (try? settingsRepository.lastActiveAt()) ?? .now,
+            resumeRoute: resumeRoute,
+            latestScanDate: recentAnalyses.first?.createdAt
+        )
+    }
+
+    private func refreshReengagementNotifications() async {
+        guard let context = buildReengagementContext() else {
+            await notificationService.cancelReengagementNotifications()
+            return
+        }
+
+        await notificationService.rescheduleReengagementNotifications(context: context)
+    }
+
+    private func consumePendingNotificationIntentIfNeeded() async {
+        guard let pendingIntent = notificationService.consumePendingOpenIntent() else { return }
+
+        switch pendingIntent {
+        case .resumeOnboarding:
+            guard let session = currentSession, !hasCompletedOnboarding else { return }
+            let resumeRoute = (try? onboardingDraftRepository.nextRoute(userId: session.localUserId)) ?? .onboardingGender
+            presentAsRoot(resumeRoute)
+        case .openFirstScan:
+            guard isAuthenticated, hasCompletedOnboarding else { return }
+            presentAsRoot(.home)
+            navigate(to: .upload)
+        case .openHome:
+            guard isAuthenticated else { return }
+            presentAsRoot(.home)
+        }
+    }
+
     private func clearOnboardingDraft() {
         onboardingDraftGender = nil
         onboardingDraftSkinTypes = []
         onboardingDraftGoal = nil
         onboardingDraftRoutine = nil
+    }
+
+    private func isEligibleReferralActivity(_ activityType: UIActivity.ActivityType?) -> Bool {
+        guard let activityType else { return false }
+
+        let blockedActivityTypes: Set<String> = [
+            UIActivity.ActivityType.copyToPasteboard.rawValue,
+            UIActivity.ActivityType.airDrop.rawValue,
+            UIActivity.ActivityType.assignToContact.rawValue,
+            UIActivity.ActivityType.addToReadingList.rawValue,
+            UIActivity.ActivityType.openInIBooks.rawValue,
+            UIActivity.ActivityType.print.rawValue,
+            UIActivity.ActivityType.saveToCameraRoll.rawValue,
+            UIActivity.ActivityType.markupAsPDF.rawValue
+        ]
+
+        return !blockedActivityTypes.contains(activityType.rawValue)
     }
 
     private func resetSessionStateToSignedOut() {
@@ -486,6 +822,7 @@ public class AppState: ObservableObject {
         scanErrorMessage = nil
         clearOnboardingDraft()
         recentAnalyses = []
+        skinJourneyLogs = []
         isProActive = false
         subscriptionPlanId = nil
         subscriptionExpiry = nil

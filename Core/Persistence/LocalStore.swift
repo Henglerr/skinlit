@@ -5,8 +5,10 @@ public enum LocalStore {
     public static func makeContainer() throws -> ModelContainer {
         let schema = Schema([
             LocalUser.self,
+            OnboardingDraft.self,
             OnboardingProfile.self,
             LocalAnalysis.self,
+            SkinJourneyLog.self,
             AppLocalSettings.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

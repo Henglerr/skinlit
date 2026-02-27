@@ -3,7 +3,31 @@ import StoreKit
 
 private let onboardingHorizontalPadding: CGFloat = 20
 private let onboardingButtonHorizontalPadding: CGFloat = 20
-private let onboardingBottomContentMargin: CGFloat = 140
+private let onboardingListHorizontalInset: CGFloat = 6
+private let onboardingListBottomInset: CGFloat = 16
+
+private struct OnboardingOptionsScroll<Content: View>: View {
+    let topPadding: CGFloat
+    @ViewBuilder let content: () -> Content
+
+    init(topPadding: CGFloat = 0, @ViewBuilder content: @escaping () -> Content) {
+        self.topPadding = topPadding
+        self.content = content
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: true) {
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, onboardingListHorizontalInset)
+                .padding(.top, topPadding)
+                .padding(.bottom, onboardingListBottomInset)
+        }
+        .scrollClipDisabled()
+        .scrollIndicators(.visible)
+        .scrollIndicatorsFlash(onAppear: true)
+    }
+}
 
 struct OnboardingGenderView: View {
     @EnvironmentObject var appState: AppState
@@ -31,7 +55,7 @@ struct OnboardingGenderView: View {
             .opacity(contentOpacity)
             .offset(y: slideOffset)
 
-            ScrollView(showsIndicators: false) {
+            OnboardingOptionsScroll(topPadding: 8) {
                 VStack(spacing: 16) {
                     ForEach(genders.indices, id: \.self) { index in
                         let gender = genders[index]
@@ -47,11 +71,7 @@ struct OnboardingGenderView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
-                .padding(.top, 8)
             }
-            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, onboardingHorizontalPadding)
@@ -124,7 +144,7 @@ struct OnboardingThemeView: View {
             .opacity(contentOpacity)
             .offset(y: slideOffset)
 
-            ScrollView(showsIndicators: false) {
+            OnboardingOptionsScroll(topPadding: 8) {
                 VStack(spacing: 16) {
                     ForEach(themes.indices, id: \.self) { index in
                         let theme = themes[index]
@@ -142,11 +162,7 @@ struct OnboardingThemeView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
-                .padding(.top, 8)
             }
-            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, onboardingHorizontalPadding)
@@ -177,6 +193,7 @@ struct OnboardingThemeView: View {
                 .frame(height: 32)
 
                 PrimaryButton("Continue") {
+                    appState.completeOnboardingThemeSelection()
                     appState.navigate(to: .onboardingSkintype)
                 }
                 .padding(.horizontal, onboardingButtonHorizontalPadding)
@@ -227,7 +244,7 @@ struct OnboardingSkintypeView: View {
             .opacity(contentOpacity)
             .offset(y: slideOffset)
 
-            ScrollView(showsIndicators: false) {
+            OnboardingOptionsScroll(topPadding: 4) {
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(skinTypes.indices, id: \.self) { index in
                         let type = skinTypes[index]
@@ -248,11 +265,7 @@ struct OnboardingSkintypeView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
-                .padding(.top, 4)
             }
-            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, onboardingHorizontalPadding)
@@ -303,6 +316,7 @@ struct OnboardingGoalView: View {
     @State private var selectedGoal: String? = nil
     @State private var contentOpacity: Double = 0
     @State private var slideOffset: CGFloat = 30
+    @State private var showNotificationPrePrompt = false
     
     let goals = [
         ("Hydration",    "💧", "Want more hydrated and soft skin"),
@@ -327,7 +341,7 @@ struct OnboardingGoalView: View {
             .opacity(contentOpacity)
             .offset(y: slideOffset)
 
-            ScrollView(showsIndicators: false) {
+            OnboardingOptionsScroll(topPadding: 8) {
                 VStack(spacing: 10) {
                     ForEach(goals.indices, id: \.self) { index in
                         let goal = goals[index]
@@ -343,11 +357,7 @@ struct OnboardingGoalView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
-                .padding(.top, 8)
             }
-            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, onboardingHorizontalPadding)
@@ -382,12 +392,33 @@ struct OnboardingGoalView: View {
 
                 PrimaryButton("Continue", isEnabled: selectedGoal != nil) {
                     appState.setOnboardingGoal(selectedGoal)
-                    appState.navigate(to: .onboardingRoutine)
+                    if appState.shouldPromptForNotificationPermission {
+                        showNotificationPrePrompt = true
+                    } else {
+                        appState.navigate(to: .onboardingRoutine)
+                    }
                 }
                 .padding(.horizontal, onboardingButtonHorizontalPadding)
                 .padding(.bottom, 32)
                 .background(AppTheme.shared.current.colors.bgPrimary)
             }
+        }
+        .alert("Stay on track?", isPresented: $showNotificationPrePrompt) {
+            Button("Not now", role: .cancel) {
+                Task {
+                    await appState.recordNotificationSoftDecline()
+                    appState.navigate(to: .onboardingRoutine)
+                }
+            }
+
+            Button("Allow reminders") {
+                Task {
+                    await appState.requestNotificationAuthorizationFromOnboarding()
+                    appState.navigate(to: .onboardingRoutine)
+                }
+            }
+        } message: {
+            Text("We can remind you to finish setup and come back for your next Skin Score.")
         }
     }
 }
@@ -419,7 +450,7 @@ struct OnboardingRoutineView: View {
             .opacity(contentOpacity)
             .offset(y: slideOffset)
 
-            ScrollView(showsIndicators: false) {
+            OnboardingOptionsScroll(topPadding: 8) {
                 VStack(spacing: 16) {
                     ForEach(routines.indices, id: \.self) { index in
                         let routine = routines[index]
@@ -435,11 +466,7 @@ struct OnboardingRoutineView: View {
                         .animation(.easeOut(duration: 0.6).delay(Double(index) * 0.05 + 0.1), value: contentOpacity)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
-                .padding(.top, 8)
             }
-            .contentMargins(.bottom, onboardingBottomContentMargin, for: .scrollContent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, onboardingHorizontalPadding)

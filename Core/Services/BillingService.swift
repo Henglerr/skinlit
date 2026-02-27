@@ -68,9 +68,23 @@ public final class StoreKitBillingService: BillingService {
     }
 
     public func fetchPackages() async throws -> [PaywallPackage] {
-        let products = try await Product.products(for: productIDs)
+        let products: [Product]
+        do {
+            products = try await Product.products(for: productIDs)
+        } catch {
+#if DEBUG
+            return debugFallbackPackages()
+#else
+            throw error
+#endif
+        }
+
         guard !products.isEmpty else {
+#if DEBUG
+            return debugFallbackPackages()
+#else
             throw BillingError.productsUnavailable
+#endif
         }
 
         let orderLookup = Dictionary(uniqueKeysWithValues: productIDs.enumerated().map { ($0.element, $0.offset) })
@@ -204,6 +218,33 @@ public final class StoreKitBillingService: BillingService {
         }
         return "\(period.value)-\(unitText)"
     }
+
+#if DEBUG
+    private func debugFallbackPackages() -> [PaywallPackage] {
+        productIDs.compactMap { productID in
+            switch productID {
+            case "com.skinscore.pro.weekly":
+                return PaywallPackage(
+                    id: productID,
+                    title: "Weekly",
+                    priceText: "$4.99",
+                    trialDescription: "7-day free trial",
+                    badge: nil
+                )
+            case "com.skinscore.pro.yearly":
+                return PaywallPackage(
+                    id: productID,
+                    title: "Yearly",
+                    priceText: "$48.99",
+                    trialDescription: "7-day free trial",
+                    badge: "BEST VALUE"
+                )
+            default:
+                return nil
+            }
+        }
+    }
+#endif
 }
 
 #if DEBUG
@@ -215,22 +256,15 @@ public final class MockBillingService: BillingService {
             PaywallPackage(
                 id: "com.skinscore.pro.weekly",
                 title: "Weekly",
-                priceText: "$2.99",
-                trialDescription: nil,
+                priceText: "$4.99",
+                trialDescription: "7-day free trial",
                 badge: nil
-            ),
-            PaywallPackage(
-                id: "com.skinscore.pro.monthly",
-                title: "Monthly",
-                priceText: "$6.99",
-                trialDescription: "3-day free trial",
-                badge: "MOST POPULAR"
             ),
             PaywallPackage(
                 id: "com.skinscore.pro.yearly",
                 title: "Yearly",
-                priceText: "$29.99",
-                trialDescription: "3-day free trial",
+                priceText: "$48.99",
+                trialDescription: "7-day free trial",
                 badge: "BEST VALUE"
             )
         ]
