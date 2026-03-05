@@ -12,15 +12,14 @@ targets:
     type: application
     platform: iOS
     sources: [App, Config, Core, Features, DesignSystem, Resources]
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
     dependencies:
       - package: GoogleSignIn
     settings:
       base:
         CODE_SIGN_ENTITLEMENTS: Resources/SkinScore.entitlements
-        GOOGLE_CLIENT_ID: "761568363778-qalajuv5ts953ispbj930igvck6lqe52.apps.googleusercontent.com"
-        GOOGLE_REVERSED_CLIENT_ID: "com.googleusercontent.apps.761568363778-qalajuv5ts953ispbj930igvck6lqe52"
-        SKIN_ANALYSIS_API_ENDPOINT: ""
-        SKIN_ANALYSIS_API_AUTH_TOKEN: ""
         TARGETED_DEVICE_FAMILY: 1
     info:
       path: Resources/Info.plist
@@ -28,7 +27,7 @@ targets:
         UILaunchStoryboardName: LaunchScreen
         GIDClientID: $(GOOGLE_CLIENT_ID)
         SkinAnalysisAPIEndpoint: $(SKIN_ANALYSIS_API_ENDPOINT)
-        SkinAnalysisAPIAuthToken: $(SKIN_ANALYSIS_API_AUTH_TOKEN)
+        AppShareURL: $(APP_SHARE_URL)
         NSCameraUsageDescription: "SkinScore uses the camera to capture a selfie for cloud-based cosmetic skin analysis."
         NSPhotoLibraryUsageDescription: "SkinScore lets you choose a photo for cloud-based cosmetic skin analysis."
         CFBundleURLTypes:

@@ -32,63 +32,58 @@ struct ScanShareGateView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
 
-                Spacer()
-
-                VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.shared.current.colors.accent.opacity(0.12))
-                            .frame(width: 100, height: 100)
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 46))
-                            .foregroundStyle(AppTheme.shared.current.colors.primaryGradient)
-                    }
-                    .opacity(contentOpacity)
-                    .scaleEffect(contentOpacity)
-
-                    VStack(spacing: 10) {
-                        Text("Invite Friends")
-                            .font(.system(size: 30, weight: .heavy))
-                            .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                            .multilineTextAlignment(.center)
-                        Text("You get 2 free scans after install.\nAfter that, each extra free scan unlocks after 2 validated referrals.")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(5)
-                    }
-                    .opacity(contentOpacity)
-                    .offset(y: slideOffset)
-
-                    VStack(spacing: 10) {
-                        HStack(spacing: 10) {
-                            statPill(title: "Invites sent", value: "\(appState.referralShareCount)")
-                            statPill(title: "Validated", value: "\(appState.validatedReferralCount)")
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        ZStack {
+                            Circle()
+                                .fill(AppTheme.shared.current.colors.accent.opacity(0.12))
+                                .frame(width: 100, height: 100)
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 46))
+                                .foregroundStyle(AppTheme.shared.current.colors.primaryGradient)
                         }
+                        .opacity(contentOpacity)
+                        .scaleEffect(contentOpacity)
 
-                        Text(validationProgressCopy)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                            .multilineTextAlignment(.center)
+                        VStack(spacing: 10) {
+                            Text("Share SkinScore")
+                                .font(.system(size: 30, weight: .heavy))
+                                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                .multilineTextAlignment(.center)
+                            Text("Share the app with a friend using your launch link.")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(5)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .opacity(contentOpacity)
+                        .offset(y: slideOffset)
 
-                        Text("Opening the share sheet does not unlock scans by itself. Rewards should only be granted after a friend signs up from your invite.")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textTertiary)
-                            .multilineTextAlignment(.center)
+                        VStack(spacing: 10) {
+                            statPill(title: "Shares sent", value: "\(appState.referralShareCount)")
+
+                            Text(validationProgressCopy)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .layoutPriority(1)
+                        }
+                        .opacity(contentOpacity)
                     }
-                    .opacity(contentOpacity)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 28)
+                    .padding(.bottom, 24)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 32)
-
-                Spacer()
             }
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showShareSheet) {
-            ShareSheet(items: [
-                "I’m using Skin Score to track my cosmetic skin progress with AI. Check it out 👇 https://github.com/Henglerr/SkinappIOSready"
-            ]) { activityType in
+            ShareSheet(items: AppConfig.shareSheetItems()) { activityType in
                 appState.recordReferralShareAttempt(activityType: activityType)
             }
         }
@@ -115,6 +110,8 @@ struct ScanShareGateView: View {
                     .cornerRadius(20)
                     .shadow(color: AppTheme.shared.current.colors.accentGlow, radius: 12, x: 0, y: 4)
                 }
+                .disabled(!AppConfig.isShareConfigured())
+                .opacity(AppConfig.isShareConfigured() ? 1 : 0.55)
 
                 Button { appState.goBack() } label: {
                     Text("Back")
@@ -131,15 +128,15 @@ struct ScanShareGateView: View {
     }
 
     private var validationProgressCopy: String {
+        if !AppConfig.isShareConfigured() {
+            return "Add the production app share URL before enabling sharing in this build."
+        }
+
         if !appState.canEarnReferralRewards {
-            return "Referral rewards require an Apple or Google account so invites can be tied to a real user."
+            return "Sharing is available after signing in with Apple or Google."
         }
 
-        if appState.validatedReferralCount > 0 {
-            return "\(appState.validatedReferralsUntilNextFreeScan) more validated referral\(appState.validatedReferralsUntilNextFreeScan == 1 ? "" : "s") until your next free scan"
-        }
-
-        return "Extra scans unlock after 2 new users actually sign up from your invite."
+        return "Use your production App Store link so people land on the live app page."
     }
 
     private func statPill(title: String, value: String) -> some View {

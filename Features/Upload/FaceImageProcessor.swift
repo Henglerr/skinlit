@@ -8,17 +8,14 @@ import CoreImage.CIFilterBuiltins
 /// Pipeline (runs off the main thread):
 ///   1. Try face detection via Vision  →  crop to face region + 55% padding
 ///      (fallback: keep full image if detection fails)
-///   2. Auto-levels (CIColorControls + CIHighlightShadowAdjust)
-///   3. Resize to 1024 × 1024 maintaining aspect ratio
-///   4. JPEG encode at 0.88 quality
+///   2. Resize with preserved aspect ratio to a 1024px max dimension
+///   3. JPEG encode at 0.88 quality
 ///
 /// Research basis:
 ///  • GPT-4 Vision / Claude 3.5 process images at 512-px tiles; 1024px gives two
 ///    tiles of detail without hitting token limits or upload timeouts.
 ///  • Cropping to the face eliminates background clutter that causes the model
 ///    to allocate attention tokens to non-skin regions, improving accuracy.
-///  • CIColorAutoAdjustment normalises white balance / exposure so skin tone
-///    scores are consistent across lighting conditions.
 ///  • JPEG 0.88 keeps file size under 300 KB (typical selfie → ~180 KB) while
 ///    preserving pore-level detail the LLM needs.
 public enum FaceImageProcessor {
@@ -36,7 +33,7 @@ public enum FaceImageProcessor {
 
     // MARK: - Public API
 
-    /// Process a raw UIImage into analysis-ready JPEG Data.
+    /// Process a raw UIImage into a face-focused JPEG without color inflation.
     public static func process(_ image: UIImage) async throws -> Data {
         try await Task.detached(priority: .userInitiated) {
             // Normalize orientation first so Vision and downstream processing
@@ -48,13 +45,27 @@ public enum FaceImageProcessor {
             // Do not block the user if face-crop fails here; a stricter face
             // validation still happens right before analysis.
             let cropped = Self.cropToFaceIfPossible(cgImage) ?? UIImage(cgImage: cgImage)
-            let enhanced = Self.autoEnhance(cropped)
-            let resized = Self.resize(enhanced, to: CGSize(width: 1024, height: 1024))
+            let resized = Self.resizePreservingAspect(cropped, maxDimension: 1024)
             guard let jpeg = resized.jpegData(compressionQuality: 0.88) else {
                 throw ProcessorError.processingFailed
             }
             return jpeg
         }.value
+    }
+
+    /// Create a lightly normalized variant of a previously processed face crop.
+    /// This gives the LLM an exposure-compensated view without changing geometry.
+    public static func normalizedVariant(from imageData: Data) throws -> Data {
+        guard let image = UIImage(data: imageData) else {
+            throw ProcessorError.processingFailed
+        }
+
+        let enhanced = autoEnhance(image)
+        let resized = resizePreservingAspect(enhanced, maxDimension: 1024)
+        guard let jpeg = resized.jpegData(compressionQuality: 0.88) else {
+            throw ProcessorError.processingFailed
+        }
+        return jpeg
     }
 
     // MARK: - Private Stages
@@ -123,12 +134,6 @@ public enum FaceImageProcessor {
             if let output = filter.outputImage { result = output }
         }
 
-        // 2. Slight vibrance boost (+0.10) to make skin tones more readable to LLM
-        let vibrance = CIFilter.vibrance()
-        vibrance.inputImage = result
-        vibrance.amount = 0.10
-        if let out = vibrance.outputImage { result = out }
-
         let context = CIContext(options: [.useSoftwareRenderer: false])
         if let rendered = context.createCGImage(result, from: result.extent) {
             return UIImage(cgImage: rendered)
@@ -136,8 +141,18 @@ public enum FaceImageProcessor {
         return image
     }
 
-    /// Resize to a square canvas, filling with black bars only if needed.
-    private static func resize(_ image: UIImage, to targetSize: CGSize) -> UIImage {
+    /// Resize to a max dimension while keeping aspect ratio intact.
+    private static func resizePreservingAspect(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let sourceSize = image.size
+        let longestSide = max(sourceSize.width, sourceSize.height)
+        guard longestSide > maxDimension else { return image }
+
+        let scale = maxDimension / longestSide
+        let targetSize = CGSize(
+            width: sourceSize.width * scale,
+            height: sourceSize.height * scale
+        )
+
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.preferredRange = .standard

@@ -31,12 +31,12 @@
 	<string>1</string>
 	<key>GIDClientID</key>
 	<string>$(GOOGLE_CLIENT_ID)</string>
+	<key>AppShareURL</key>
+	<string>$(APP_SHARE_URL)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>SkinScore uses the camera to capture a selfie for cloud-based cosmetic skin analysis.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SkinScore lets you choose a photo for cloud-based cosmetic skin analysis.</string>
-	<key>SkinAnalysisAPIAuthToken</key>
-	<string>$(SKIN_ANALYSIS_API_AUTH_TOKEN)</string>
 	<key>SkinAnalysisAPIEndpoint</key>
 	<string>$(SKIN_ANALYSIS_API_ENDPOINT)</string>
 	<key>UIApplicationSceneManifest</key>

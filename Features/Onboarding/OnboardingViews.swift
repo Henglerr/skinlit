@@ -35,11 +35,7 @@ struct OnboardingGenderView: View {
     @State private var contentOpacity: Double = 0
     @State private var slideOffset: CGFloat = 30
 
-    let genders = [
-        ("Female", "👩"),
-        ("Male", "👨"),
-        ("Other", "🧑")
-    ]
+    let genders = ["Female", "Male", "Other"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -60,11 +56,12 @@ struct OnboardingGenderView: View {
                     ForEach(genders.indices, id: \.self) { index in
                         let gender = genders[index]
                         GoalCard(
-                            title: "\(gender.1) \(gender.0)",
+                            title: gender,
+                            symbolName: nil,
                             description: "",
-                            isSelected: selectedGender == gender.0
+                            isSelected: selectedGender == gender
                         ) {
-                            selectedGender = gender.0
+                            selectedGender = gender
                         }
                         .opacity(contentOpacity)
                         .offset(y: slideOffset)
@@ -122,8 +119,8 @@ struct OnboardingThemeView: View {
     @State private var slideOffset: CGFloat = 30
 
     let themes = [
-        ("pastel", "Pastel Aesthetic", "🌸", "Light, soft, and vibrant pinks"),
-        ("purple", "Dark Purple", "🌙", "Deep, elegant, and dark purple")
+        ("pastel", "Pastel Aesthetic", "paintpalette.fill", "Light, soft, and vibrant pinks"),
+        ("purple", "Dark Purple", "moon.stars.fill", "Deep, elegant, and dark purple")
     ]
 
     var body: some View {
@@ -149,7 +146,8 @@ struct OnboardingThemeView: View {
                     ForEach(themes.indices, id: \.self) { index in
                         let theme = themes[index]
                         GoalCard(
-                            title: "\(theme.2) \(theme.1)",
+                            title: theme.1,
+                            symbolName: theme.2,
                             description: theme.3,
                             isSelected: appState.appTheme == theme.0
                         ) {
@@ -211,19 +209,19 @@ struct OnboardingSkintypeView: View {
     @State private var slideOffset: CGFloat = 30
 
     let skinTypes = [
-        ("Normal",           "✨", "Balanced, fine pores"),
-        ("Oily",             "💧", "Excess shine, large pores"),
-        ("Dry",              "🏜️", "Flakiness, tight feeling"),
-        ("Combination",      "☯️", "Oily T-zone, dry cheeks"),
-        ("Sensitive",        "🌸", "Redness, easy irritation"),
-        ("Acne-prone",       "🎯", "Blackheads, breakouts"),
-        ("Mature",           "🕐", "Fine lines, loss of firmness"),
-        ("Hyperpigmented",   "🌑", "Dark spots, uneven tone")
+        ("Normal", "checkmark.circle.fill", "Balanced, fine pores"),
+        ("Oily", "drop.fill", "Excess shine, large pores"),
+        ("Dry", "sun.max.fill", "Flakiness, tight feeling"),
+        ("Combination", "circle.lefthalf.filled", "Oily T-zone, dry cheeks"),
+        ("Sensitive", "hand.raised.fill", "Redness, easy irritation"),
+        ("Acne-prone", "scope", "Blackheads, breakouts"),
+        ("Mature", "clock.fill", "Fine lines, loss of firmness"),
+        ("Hyperpigmented", "moon.fill", "Dark spots, uneven tone")
     ]
 
     let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
+        GridItem(.flexible(), spacing: 8, alignment: .top),
+        GridItem(.flexible(), spacing: 8, alignment: .top)
     ]
 
     var body: some View {
@@ -245,11 +243,11 @@ struct OnboardingSkintypeView: View {
             .offset(y: slideOffset)
 
             OnboardingOptionsScroll(topPadding: 4) {
-                LazyVGrid(columns: columns, spacing: 10) {
+                LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(skinTypes.indices, id: \.self) { index in
                         let type = skinTypes[index]
                         SkinTypeChip(
-                            icon: type.1,
+                            symbolName: type.1,
                             title: type.0,
                             description: type.2,
                             isSelected: selectedTypes.contains(type.0)
@@ -319,12 +317,12 @@ struct OnboardingGoalView: View {
     @State private var showNotificationPrePrompt = false
     
     let goals = [
-        ("Hydration",    "💧", "Want more hydrated and soft skin"),
-        ("Glow",         "✨", "Want that natural glow"),
-        ("Acne Control", "🎯", "Want to control breakouts and blemishes"),
-        ("Anti-aging",   "⏳", "Want to reduce fine lines and firmness"),
-        ("Even Tone",    "🌈", "Want a more uniform skin tone"),
-        ("Just Rating",  "📊", "I'll just rate other people's skin")
+        ("Hydration", "drop.fill", "Want more hydrated and soft skin"),
+        ("Glow", "sparkles", "Want that natural glow"),
+        ("Acne Control", "scope", "Want to control breakouts and blemishes"),
+        ("Anti-aging", "clock.fill", "Want to reduce fine lines and firmness"),
+        ("Even Tone", "circle.lefthalf.filled", "Want a more uniform skin tone"),
+        ("Just Rating", "chart.bar.fill", "I'll just rate other people's skin")
     ]
 
     var body: some View {
@@ -346,7 +344,8 @@ struct OnboardingGoalView: View {
                     ForEach(goals.indices, id: \.self) { index in
                         let goal = goals[index]
                         GoalCard(
-                            title: "\(goal.1) \(goal.0)",
+                            title: goal.0,
+                            symbolName: goal.1,
                             description: goal.2,
                             isSelected: selectedGoal == goal.0
                         ) {
@@ -430,10 +429,10 @@ struct OnboardingRoutineView: View {
     @State private var slideOffset: CGFloat = 30
 
     let routines = [
-        ("Beginner",    "🌱", "Moisturizer and SPF, that's it"),
-        ("Basic",       "⚗️", "Cleanser + moisturizer + SPF"),
-        ("Advanced",    "🔬", "Serums, acids, retinol..."),
-        ("No routine",  "🚫", "Starting from zero")
+        ("Beginner", "leaf.fill", "Moisturizer and SPF, that's it"),
+        ("Basic", "checkmark.seal.fill", "Cleanser + moisturizer + SPF"),
+        ("Advanced", "slider.horizontal.3", "Serums, acids, retinol..."),
+        ("No routine", "minus.circle.fill", "Starting from zero")
     ]
 
     var body: some View {
@@ -455,7 +454,8 @@ struct OnboardingRoutineView: View {
                     ForEach(routines.indices, id: \.self) { index in
                         let routine = routines[index]
                         RoutineCard(
-                            title: "\(routine.1) \(routine.0)",
+                            title: routine.0,
+                            symbolName: routine.1,
                             description: routine.2,
                             isSelected: selectedRoutine == routine.0
                         ) {
@@ -619,11 +619,11 @@ struct OnboardingRatingView: View {
 
                     // Headline
                     VStack(spacing: 10) {
-                        Text("Give us 5 stars? ⭐️")
+                        Text("Give us 5 stars?")
                             .font(.system(size: 32, weight: .heavy))
                             .foregroundColor(AppTheme.shared.current.colors.textPrimary)
                             .multilineTextAlignment(.center)
-                        Text("We built this for you. A quick rating\ntakes 3 seconds and helps us reach\nmore people who want better skin. 🙏")
+                        Text("We built this for you. A quick rating takes 3 seconds and helps us reach more people who want better skin.")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                             .multilineTextAlignment(.center)
@@ -723,11 +723,11 @@ struct OnboardingRatingView: View {
 
     private func ratingLabel(for stars: Int) -> String {
         switch stars {
-        case 1: return "Sorry to hear that 😔 — we'll keep improving!"
-        case 2: return "Thanks for the feedback. We'll do better! 🙏"
-        case 3: return "Good start! Lots more coming 🚀"
-        case 4: return "Amazing! Thanks so much ⭐️"
-        case 5: return "You're the best! 🌟 Thank you!"
+        case 1: return "Sorry to hear that. We'll keep improving."
+        case 2: return "Thanks for the feedback. We'll do better."
+        case 3: return "Good start. Lots more coming."
+        case 4: return "Amazing. Thanks so much."
+        case 5: return "You're the best. Thank you."
         default: return ""
         }
     }

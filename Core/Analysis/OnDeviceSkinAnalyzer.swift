@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import CoreGraphics
 
-public struct OnDeviceAnalysisResult {
+public struct OnDeviceAnalysisResult: Equatable {
     public let score: Double
     public let summary: String
     public let skinTypeDetected: String

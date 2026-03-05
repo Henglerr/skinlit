@@ -9,6 +9,7 @@ struct LoadingView: View {
     @State private var ringRotation: Double = 0
     @State private var ringScale: CGFloat = 1.0
     @State private var hasStartedAnalysis = false
+    @State private var isAnalyzing = false
 
     let phrases = [
         "Analyzing hydration levels...",
@@ -29,6 +30,31 @@ struct LoadingView: View {
             return
         }
         appState.presentAsRoot(.upload)
+    }
+
+    private func startAnalysis() {
+        guard !isAnalyzing else { return }
+        isAnalyzing = true
+
+        Task {
+            let startedAt = Date()
+            let analysisId = await appState.processPendingAnalysis()
+            let elapsed = Date().timeIntervalSince(startedAt)
+            let minimumLoadingTime = 2.2
+
+            if elapsed < minimumLoadingTime {
+                let remaining = minimumLoadingTime - elapsed
+                try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            }
+
+            await MainActor.run {
+                isAnalyzing = false
+
+                if let analysisId {
+                    appState.openAnalysisInHomeDeepDive(analysisId)
+                }
+            }
+        }
     }
 
     var body: some View {
@@ -83,6 +109,7 @@ struct LoadingView: View {
                     .multilineTextAlignment(.center)
                     .opacity(phraseOpacity)
                     .onReceive(timer) { _ in
+                        guard isAnalyzing else { return }
                         withAnimation(.easeOut(duration: 0.3)) { phraseOpacity = 0 }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                             currentPhraseIndex = (currentPhraseIndex + 1) % phrases.count
@@ -90,30 +117,34 @@ struct LoadingView: View {
                         }
                     }
 
+                if !isAnalyzing, let errorMessage = appState.scanErrorMessage {
+                    VStack(spacing: 14) {
+                        Text(errorMessage)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            .multilineTextAlignment(.center)
+
+                        PrimaryButton("Try Again") {
+                            appState.scanErrorMessage = nil
+                            startAnalysis()
+                        }
+
+                        Button(action: popToLatestScanPrep) {
+                            Text("Choose Another Photo")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                }
+
                 Spacer()
             }
             .padding(.horizontal, 40)
             .onAppear {
                 guard !hasStartedAnalysis else { return }
                 hasStartedAnalysis = true
-
-                Task {
-                    let startedAt = Date()
-                    let analysisId = await appState.processPendingAnalysis()
-                    let elapsed = Date().timeIntervalSince(startedAt)
-                    let minimumLoadingTime = 2.2
-
-                    if elapsed < minimumLoadingTime {
-                        let remaining = minimumLoadingTime - elapsed
-                        try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
-                    }
-
-                    if let analysisId {
-                        appState.openAnalysisInHomeDeepDive(analysisId)
-                    } else {
-                        popToLatestScanPrep()
-                    }
-                }
+                startAnalysis()
             }
         }
         .navigationBarHidden(true)
@@ -267,13 +298,15 @@ struct PaywallView: View {
                                 .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                         }
 
-                        Button {
-                            showShareSheet = true
-                        } label: {
-                            Text("Unlock 1 extra scan after 2 friend sign-ups")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                                .underline()
+                        if AppConfig.isShareConfigured() {
+                            Button {
+                                showShareSheet = true
+                            } label: {
+                                Text("Share Skin Score")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                    .underline()
+                            }
                         }
 
                         VStack(spacing: 8) {
@@ -304,9 +337,7 @@ struct PaywallView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showShareSheet) {
-            ShareSheet(items: [
-                "I’m using Skin Score to track my cosmetic skin progress with AI. Check it out 👇 https://github.com/Henglerr/SkinappIOSready"
-            ]) { activityType in
+            ShareSheet(items: AppConfig.shareSheetItems()) { activityType in
                 appState.recordReferralShareAttempt(activityType: activityType)
             }
         }

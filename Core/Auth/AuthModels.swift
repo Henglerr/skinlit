@@ -12,6 +12,7 @@ public struct AuthSession: Codable, Equatable {
     public let providerUserId: String?
     public let email: String?
     public let displayName: String?
+    public let remoteUserId: String?
     public let isSignedIn: Bool
 
     public init(
@@ -20,6 +21,7 @@ public struct AuthSession: Codable, Equatable {
         providerUserId: String?,
         email: String?,
         displayName: String?,
+        remoteUserId: String? = nil,
         isSignedIn: Bool = true
     ) {
         self.localUserId = localUserId
@@ -27,14 +29,21 @@ public struct AuthSession: Codable, Equatable {
         self.providerUserId = providerUserId
         self.email = email
         self.displayName = displayName
+        self.remoteUserId = remoteUserId
         self.isSignedIn = isSignedIn
+    }
+
+    public var usesRemoteBackend: Bool {
+        provider != .guest && (remoteUserId?.isEmpty == false)
     }
 }
 
 public enum AuthError: LocalizedError {
     case cancelled
     case invalidAppleCredential
+    case missingProviderToken
     case googleNotConfigured
+    case backendNotConfigured
     case presentationContextMissing
     case sessionPersistenceFailed
     case noActiveSession
@@ -47,8 +56,12 @@ public enum AuthError: LocalizedError {
             return "Sign-in was cancelled."
         case .invalidAppleCredential:
             return "Could not read Apple sign-in credentials."
+        case .missingProviderToken:
+            return "Could not obtain a valid identity token from the sign-in provider."
         case .googleNotConfigured:
             return "Google sign-in is not configured yet."
+        case .backendNotConfigured:
+            return "Backend URL is not configured for authenticated accounts."
         case .presentationContextMissing:
             return "Could not present the sign-in flow."
         case .sessionPersistenceFailed:

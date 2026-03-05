@@ -10,13 +10,27 @@ public final class SettingsRepository {
     }
 
     public func settings() throws -> AppLocalSettings {
-        let singletonId = AppLocalSettings.singletonId
-        let predicate = #Predicate<AppLocalSettings> { $0.id == singletonId }
-        var descriptor = FetchDescriptor<AppLocalSettings>(predicate: predicate)
-        descriptor.fetchLimit = 1
+        var descriptor = FetchDescriptor<AppLocalSettings>()
+        let existingSettings = try context.fetch(descriptor)
 
-        if let existing = try context.fetch(descriptor).first {
-            return existing
+        if let primary = existingSettings.first {
+            var requiresSave = false
+
+            if primary.id != AppLocalSettings.singletonId {
+                primary.id = AppLocalSettings.singletonId
+                requiresSave = true
+            }
+
+            for duplicate in existingSettings.dropFirst() {
+                context.delete(duplicate)
+                requiresSave = true
+            }
+
+            if requiresSave {
+                try context.save()
+            }
+
+            return primary
         }
 
         let created = AppLocalSettings()

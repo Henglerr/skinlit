@@ -11,6 +11,7 @@ public final class LocalAuthService: AuthService {
     private let analysisRepository: AnalysisRepository
     private let skinJourneyRepository: SkinJourneyRepository
     private let settingsRepository: SettingsRepository
+    private let backendSessionService: BackendSessionService
     private let keychainStore: KeychainStore
 
     private let sessionStorageAccount = "local_auth_session"
@@ -22,6 +23,7 @@ public final class LocalAuthService: AuthService {
         analysisRepository: AnalysisRepository,
         skinJourneyRepository: SkinJourneyRepository,
         settingsRepository: SettingsRepository,
+        backendSessionService: BackendSessionService = BackendSessionService(),
         keychainStore: KeychainStore = KeychainStore()
     ) {
         self.userRepository = userRepository
@@ -30,6 +32,7 @@ public final class LocalAuthService: AuthService {
         self.analysisRepository = analysisRepository
         self.skinJourneyRepository = skinJourneyRepository
         self.settingsRepository = settingsRepository
+        self.backendSessionService = backendSessionService
         self.keychainStore = keychainStore
     }
 
@@ -44,6 +47,7 @@ public final class LocalAuthService: AuthService {
         do {
             switch session.provider {
             case .guest:
+                backendSessionService.clearLocalSession()
                 break
             case .apple:
                 guard let providerUserId = session.providerUserId else {
@@ -55,15 +59,17 @@ public final class LocalAuthService: AuthService {
                     try await invalidateSession()
                     return nil
                 }
+                _ = try await restoreBackendSessionIfNeeded(for: session)
             case .google:
                 guard isGoogleSignInAvailable else {
                     try await invalidateSession()
                     return nil
                 }
                 _ = try await restoreGoogleUser()
+                _ = try await restoreBackendSessionIfNeeded(for: session)
             }
 
-            try settingsRepository.setCurrentUser(id: session.localUserId, provider: session.provider)
+            synchronizeCurrentUser(session)
             return session
         } catch {
             try? await invalidateSession()
@@ -87,9 +93,18 @@ public final class LocalAuthService: AuthService {
             throw AuthError.invalidAppleCredential
         }
 
+        guard
+            let identityTokenData = credential.identityToken,
+            let providerToken = String(data: identityTokenData, encoding: .utf8),
+            !providerToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            throw AuthError.missingProviderToken
+        }
+
         let displayName = formattedName(from: credential.fullName)
-        return try signInWithProvider(
+        return try await signInWithProvider(
             provider: .apple,
+            providerToken: providerToken,
             providerUserId: credential.user,
             email: credential.email,
             displayName: displayName
@@ -106,11 +121,16 @@ public final class LocalAuthService: AuthService {
         }
 
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: googleClientID)
-        let googleUser = try await performGoogleSignIn(with: presentingViewController)
+        var googleUser = try await performGoogleSignIn(with: presentingViewController)
+        googleUser = try await refreshGoogleUserTokensIfNeeded(googleUser)
+        guard let providerToken = googleUser.idToken?.tokenString, !providerToken.isEmpty else {
+            throw AuthError.missingProviderToken
+        }
         let providerUserId = googleUser.userID ?? googleUser.profile?.email
 
-        return try signInWithProvider(
+        return try await signInWithProvider(
             provider: .google,
+            providerToken: providerToken,
             providerUserId: providerUserId,
             email: googleUser.profile?.email,
             displayName: googleUser.profile?.name
@@ -119,7 +139,8 @@ public final class LocalAuthService: AuthService {
 
     public func continueAsGuest() async throws -> AuthSession {
         if let existing = loadPersistedSession(), existing.provider == .guest {
-            try settingsRepository.setCurrentUser(id: existing.localUserId, provider: .guest)
+            backendSessionService.clearLocalSession()
+            synchronizeCurrentUser(existing)
             return existing
         }
 
@@ -129,8 +150,10 @@ public final class LocalAuthService: AuthService {
             provider: .guest,
             providerUserId: nil,
             email: nil,
-            displayName: user.displayName
+            displayName: user.displayName,
+            remoteUserId: nil
         )
+        backendSessionService.clearLocalSession()
         try persistSession(session)
         return session
     }
@@ -139,6 +162,7 @@ public final class LocalAuthService: AuthService {
         if GIDSignIn.sharedInstance.currentUser != nil {
             GIDSignIn.sharedInstance.signOut()
         }
+        try? await backendSessionService.revokeCurrentSession()
         try await invalidateSession()
     }
 
@@ -150,6 +174,12 @@ public final class LocalAuthService: AuthService {
         do {
             if GIDSignIn.sharedInstance.currentUser != nil {
                 GIDSignIn.sharedInstance.signOut()
+            }
+
+            if session.usesRemoteBackend {
+                try await backendSessionService.deleteCurrentAccount()
+            } else {
+                backendSessionService.clearLocalSession()
             }
 
             try analysisRepository.deleteAnalyses(userId: session.localUserId)
@@ -169,10 +199,31 @@ public final class LocalAuthService: AuthService {
 
     private func signInWithProvider(
         provider: AuthProvider,
+        providerToken: String?,
         providerUserId: String?,
         email: String?,
         displayName: String?
-    ) throws -> AuthSession {
+    ) async throws -> AuthSession {
+        let backendSession: BackendSession?
+        if provider == .guest {
+            backendSession = nil
+            backendSessionService.clearLocalSession()
+        } else {
+            guard backendSessionService.isConfigured else {
+                throw AuthError.backendNotConfigured
+            }
+            guard let providerToken, !providerToken.isEmpty else {
+                throw AuthError.missingProviderToken
+            }
+            backendSession = try await backendSessionService.exchangeSession(
+                provider: provider,
+                providerToken: providerToken,
+                providerUserID: providerUserId,
+                email: email,
+                displayName: displayName
+            )
+        }
+
         let targetUser = try userRepository.findOrCreateUser(
             provider: provider,
             providerUserId: providerUserId,
@@ -194,7 +245,8 @@ public final class LocalAuthService: AuthService {
             provider: provider,
             providerUserId: providerUserId,
             email: email ?? targetUser.email,
-            displayName: displayName ?? targetUser.displayName
+            displayName: displayName ?? targetUser.displayName,
+            remoteUserId: backendSession?.userID
         )
         try persistSession(session)
         return session
@@ -208,10 +260,11 @@ public final class LocalAuthService: AuthService {
 
         do {
             try keychainStore.save(payload, account: sessionStorageAccount)
-            try settingsRepository.setCurrentUser(id: session.localUserId, provider: session.provider)
         } catch {
             throw AuthError.sessionPersistenceFailed
         }
+
+        synchronizeCurrentUser(session)
     }
 
     private func loadPersistedSession() -> AuthSession? {
@@ -223,7 +276,29 @@ public final class LocalAuthService: AuthService {
 
     private func invalidateSession() async throws {
         keychainStore.delete(account: sessionStorageAccount)
+        backendSessionService.clearLocalSession()
         try settingsRepository.clearCurrentUser()
+    }
+
+    private func restoreBackendSessionIfNeeded(for session: AuthSession) async throws -> BackendSession? {
+        guard session.usesRemoteBackend else {
+            backendSessionService.clearLocalSession()
+            return nil
+        }
+        guard backendSessionService.isConfigured else {
+            throw AuthError.backendNotConfigured
+        }
+        return try await backendSessionService.restoreSession(for: session)
+    }
+
+    private func synchronizeCurrentUser(_ session: AuthSession) {
+        do {
+            try settingsRepository.setCurrentUser(id: session.localUserId, provider: session.provider)
+        } catch {
+            #if DEBUG
+            print("LocalAuthService: failed to sync current user settings: \(error)")
+            #endif
+        }
     }
 
     private func appleCredentialState(for userId: String) async -> ASAuthorizationAppleIDProvider.CredentialState {
@@ -249,6 +324,22 @@ public final class LocalAuthService: AuthService {
                 }
 
                 continuation.resume(returning: user)
+            }
+        }
+    }
+
+    private func refreshGoogleUserTokensIfNeeded(_ user: GIDGoogleUser) async throws -> GIDGoogleUser {
+        try await withCheckedThrowingContinuation { continuation in
+            user.refreshTokensIfNeeded { refreshedUser, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let refreshedUser else {
+                    continuation.resume(throwing: AuthError.missingProviderToken)
+                    return
+                }
+                continuation.resume(returning: refreshedUser)
             }
         }
     }

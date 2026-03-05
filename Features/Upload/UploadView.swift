@@ -81,7 +81,7 @@ struct UploadView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "lock.fill")
                             .foregroundColor(AppTheme.shared.current.colors.warning)
-                        Text("You used your \(AppState.freeScanQuota) free scans. Upgrade to PRO or unlock more with 2 validated referrals.")
+                        Text("You used your \(AppState.freeScanQuota) free scans. Upgrade to PRO to keep scanning with cloud analysis.")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textPrimary)
                             .multilineTextAlignment(.leading)
@@ -118,29 +118,33 @@ struct UploadView: View {
                         handlePrimaryAction(useCamera: true)
                     }
 
-                    Button(action: { handlePrimaryAction(useCamera: false) }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: appState.canRunScan ? "photo.on.rectangle" : "lock.open.fill")
-                                .font(.system(size: 18))
-                            Text(secondaryActionTitle)
-                                .font(.system(size: 17, weight: .semibold))
+                    if appState.canRunScan {
+                        Button(action: { handlePrimaryAction(useCamera: false) }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "photo.on.rectangle")
+                                    .font(.system(size: 18))
+                                Text(secondaryActionTitle)
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                            .background(AppTheme.shared.current.colors.surface)
+                            .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                            .cornerRadius(20)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.1), lineWidth: 1)
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(AppTheme.shared.current.colors.surface)
-                        .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.1), lineWidth: 1)
-                        )
                     }
 
-                    Button(action: { appState.navigate(to: .shareGate) }) {
-                        Text("Unlock 1 extra scan after 2 friend sign-ups")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                            .underline()
+                    if AppConfig.isShareConfigured() {
+                        Button(action: { appState.navigate(to: .shareGate) }) {
+                            Text("Share Skin Score")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .underline()
+                        }
                     }
                 }
                 .padding(.horizontal, 24)
@@ -171,7 +175,7 @@ struct UploadView: View {
     }
 
     private var secondaryActionTitle: String {
-        appState.canRunScan ? "Choose from Gallery" : "View Subscription Options"
+        "Choose from Gallery"
     }
 
     private func handlePrimaryAction(useCamera: Bool) {

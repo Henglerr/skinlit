@@ -8,13 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		02BB31B01F139CD9B2A88B7A /* OpenAIVisionSkinAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51FD1C39457A7A4119923AB8 /* OpenAIVisionSkinAnalyzer.swift */; };
-		A1B2C3D40123456789ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D60123456789ABCDEF /* Assets.xcassets */; };
-		A1B2C3D50123456789ABCDEF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */; };
 		072B67DA992C490F9267E7BA /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 578637877246D4B4E4779285 /* HomeView.swift */; };
 		07FDFC52AA50A38D8AF85B49 /* RoutineCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE69A8F717CD30675B3989B2 /* RoutineCard.swift */; };
 		1B71025B3C5BD66FB58E8187 /* OnboardingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3B96F886D318F3CCA0386A2 /* OnboardingViews.swift */; };
 		25BB5A78D36012A198524B1E /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B2F06B1246FC4F3B179F39 /* PrimaryButton.swift */; };
 		2810C775A68DB8F640F69F4C /* SkinScoreApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA4BA95003EEE7ECE6C5E8CF /* SkinScoreApp.swift */; };
+		3BDA110D7C08BBF7CB56DC79 /* BackendSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6881195FD7CA1DB4A7B7B148 /* BackendSessionStore.swift */; };
 		3BDEC1E8441B8C726B4A24DE /* FaceImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB6F388787CDD65C5E6F85A /* FaceImageProcessor.swift */; };
 		4A6A39B95A55ADA4008C4604 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85FD535035CD233113566BC /* AuthService.swift */; };
 		4CDE4567BCDE5CF726B8F475 /* OnDeviceSkinAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DDE470F8A05C9EB3D3A949 /* OnDeviceSkinAnalyzer.swift */; };
@@ -22,6 +21,7 @@
 		553B0F7B9D855FE168A9B5B8 /* UserRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B962EF34BB460BBCF95C2268 /* UserRepository.swift */; };
 		59E6CDD5E01074BD053E90F0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2E4667F311F100A8C1E2FB /* RootView.swift */; };
 		5E495092CDAFCBD90D76E0D3 /* ScanPrepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 489AB5DC0B9E81978E7034CD /* ScanPrepView.swift */; };
+		6267F4EBFA4B51E2E094D5EF /* RemoteRepositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C85474533A209581A5CB64 /* RemoteRepositories.swift */; };
 		66B0224CC0E3768AE5BA6A53 /* SkinAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABC74139F7D86A2F25167BE /* SkinAnalysisService.swift */; };
 		6A707299FA64723575179CCE /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFEA1141593FF5E86136997 /* AuthModels.swift */; };
 		6CCFD0FF35AD782221CB1022 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 158AC89A13240A83B6B80D4F /* Color+Hex.swift */; };
@@ -31,6 +31,16 @@
 		83945618DE54D0EDA0B31FEE /* BillingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B014D8543F15818D08504C08 /* BillingService.swift */; };
 		8460428566A54A349E11ECD1 /* LocalAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61582100A975D58122B182F7 /* LocalAnalysis.swift */; };
 		898F44D199376620B19D87D1 /* OnboardingProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 542D95F016F3A792A53BF92B /* OnboardingProfile.swift */; };
+		990A3155601596750B46F980 /* LocalAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581CA9E28C5BE5D51DE5273A /* LocalAuthService.swift */; };
+		9C4ED0E866A6E6BFCD9AF2BF /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF5ACE23C04209C9D6C20F2 /* AppTheme.swift */; };
+		A1B2C3D40123456789ABCDEF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D60123456789ABCDEF /* Assets.xcassets */; };
+		A1B2C3D50123456789ABCDEF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */; };
+		A21050ECE78D0564AECC633B /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */; };
+		A28AD350821DF4153C71BC05 /* ScanShareGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A891CDA9D7E392374D1D007 /* ScanShareGateView.swift */; };
+		A811BFCDF30151095BEDF0D8 /* SettingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E64E88ECAB4EDBD93C64528 /* SettingsRepository.swift */; };
+		A9C1111E0D8145C1B2210001 /* SkinJourneyLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1111E0D8145C1B2210011 /* SkinJourneyLog.swift */; };
+		A9C1111E0D8145C1B2210002 /* SkinJourneyRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1111E0D8145C1B2210012 /* SkinJourneyRepository.swift */; };
+		A9C1111E0D8145C1B2210003 /* SkinJourneyViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1111E0D8145C1B2210013 /* SkinJourneyViews.swift */; };
 		A9D200000000000000000001 /* OnboardingDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001001 /* OnboardingDraft.swift */; };
 		A9D200000000000000000002 /* OnboardingDraftRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001002 /* OnboardingDraftRepository.swift */; };
 		A9D200000000000000000003 /* NotificationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001003 /* NotificationModels.swift */; };
@@ -40,17 +50,12 @@
 		A9D200000000000000000102 /* OnboardingDraftRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001103 /* OnboardingDraftRepositoryTests.swift */; };
 		A9D200000000000000000103 /* SettingsRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001104 /* SettingsRepositoryTests.swift */; };
 		A9D200000000000000000104 /* LocalNotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001105 /* LocalNotificationServiceTests.swift */; };
-		A9C1111E0D8145C1B2210001 /* SkinJourneyLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1111E0D8145C1B2210011 /* SkinJourneyLog.swift */; };
-		A9C1111E0D8145C1B2210002 /* SkinJourneyRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1111E0D8145C1B2210012 /* SkinJourneyRepository.swift */; };
-		A9C1111E0D8145C1B2210003 /* SkinJourneyViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1111E0D8145C1B2210013 /* SkinJourneyViews.swift */; };
-		990A3155601596750B46F980 /* LocalAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581CA9E28C5BE5D51DE5273A /* LocalAuthService.swift */; };
-		9C4ED0E866A6E6BFCD9AF2BF /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EF5ACE23C04209C9D6C20F2 /* AppTheme.swift */; };
-		A21050ECE78D0564AECC633B /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */; };
-		A28AD350821DF4153C71BC05 /* ScanShareGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A891CDA9D7E392374D1D007 /* ScanShareGateView.swift */; };
-		A811BFCDF30151095BEDF0D8 /* SettingsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E64E88ECAB4EDBD93C64528 /* SettingsRepository.swift */; };
+		A9D200000000000000000105 /* CompositeSkinAnalysisServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001106 /* CompositeSkinAnalysisServiceTests.swift */; };
 		AEF44CF9C53BE64743C85321 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14899046A1E3E0A07DF7618 /* AuthView.swift */; };
 		B83CC7D8B14DCAB76A7C1B27 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930F2E9BF4065C3B90C0E710 /* ImagePicker.swift */; };
 		BC421C060B7A5BEBDB5A1879 /* LocalUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5395692BEE9F1849D0BB9F /* LocalUser.swift */; };
+		C53EB1477DB895C4E02698B3 /* BackendModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F9F0BB639B79346B5FEC6A7 /* BackendModels.swift */; };
+		CC55D3F4C6763200E37FD726 /* BackendSessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C492C67DC6A4011EF3CDE0 /* BackendSessionService.swift */; };
 		CC93EEB7D93B9F9CCEE8CB31 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 231FA15202318184ACCA012E /* GoogleSignIn */; };
 		D0F7D12CFECFB558C9CB011F /* AppLocalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BB1DF887C2D8BEFEF0823A /* AppLocalSettings.swift */; };
 		D16DFBFF07011995512D5785 /* OnboardingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EFD5C0B7C1935AC59CB6EAC /* OnboardingRepository.swift */; };
@@ -59,21 +64,33 @@
 		E08A362C324313D401C507F7 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B03CE3E5EF7347C1180B488 /* LocalStore.swift */; };
 		E8633DF747A3935D7FE583F8 /* VisionFaceDetectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EC831BA534B05134C26346F /* VisionFaceDetectionService.swift */; };
 		EE2BE058A24FBF32B798F6A4 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C6300F89C763F0D0340EAE /* SplashView.swift */; };
+		F182222A196B91487169C3EF /* RemoteDataSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86484F464107D6B539113B2 /* RemoteDataSyncService.swift */; };
+		F22E868DB33E968FBB8BD88F /* ConvexBackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FD5871C89833F70E337A99 /* ConvexBackendClient.swift */; };
 		F37ABB01278A2137868A907D /* AnalysisRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0797336A6978E9EFBCEEC05 /* AnalysisRepository.swift */; };
 		F631331E864849EEB4BF75F1 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6334D0827A0549335787EBA5 /* ProgressBar.swift */; };
 		FD7652F7CDBA75B9E78815D4 /* SkinTypeChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1D96A6941AD800FBD5A828 /* SkinTypeChip.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A9D200000000000000004001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06679EE2E4230BE4A0F97F4C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE7EDF85D4EF60BE6F10D172;
+			remoteInfo = SkinScore;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		02BB1DF887C2D8BEFEF0823A /* AppLocalSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalSettings.swift; sourceTree = "<group>"; };
 		0B03CE3E5EF7347C1180B488 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		0F2E4667F311F100A8C1E2FB /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		A1B2C3D60123456789ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		12FD5871C89833F70E337A99 /* ConvexBackendClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConvexBackendClient.swift; path = ConvexBackendClient.swift; sourceTree = "<group>"; };
 		158AC89A13240A83B6B80D4F /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		25B9153CD631076352375988 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2EF5ACE23C04209C9D6C20F2 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		2F9F0BB639B79346B5FEC6A7 /* BackendModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackendModels.swift; path = BackendModels.swift; sourceTree = "<group>"; };
 		3AB6F388787CDD65C5E6F85A /* FaceImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceImageProcessor.swift; sourceTree = "<group>"; };
 		3E64E88ECAB4EDBD93C64528 /* SettingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRepository.swift; sourceTree = "<group>"; };
 		3EC831BA534B05134C26346F /* VisionFaceDetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionFaceDetectionService.swift; sourceTree = "<group>"; };
@@ -86,13 +103,26 @@
 		5A891CDA9D7E392374D1D007 /* ScanShareGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanShareGateView.swift; sourceTree = "<group>"; };
 		61582100A975D58122B182F7 /* LocalAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnalysis.swift; sourceTree = "<group>"; };
 		6334D0827A0549335787EBA5 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
+		6881195FD7CA1DB4A7B7B148 /* BackendSessionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackendSessionStore.swift; path = BackendSessionStore.swift; sourceTree = "<group>"; };
 		6922D17D4361C2F566D0773F /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		6E5395692BEE9F1849D0BB9F /* LocalUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalUser.swift; sourceTree = "<group>"; };
 		70839CB48C04EFF93B7BE93D /* SkinScore.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SkinScore.entitlements; sourceTree = "<group>"; };
 		7631A7914C646E9D6C8EFD72 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		77FF0337CF765F75BD26D924 /* Debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		89B2F06B1246FC4F3B179F39 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
 		8C2388E76795E2E011D71955 /* GoalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalCard.swift; sourceTree = "<group>"; };
 		8EFD5C0B7C1935AC59CB6EAC /* OnboardingRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingRepository.swift; sourceTree = "<group>"; };
+		930F2E9BF4065C3B90C0E710 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
+		97C6300F89C763F0D0340EAE /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		97C85474533A209581A5CB64 /* RemoteRepositories.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemoteRepositories.swift; path = RemoteRepositories.swift; sourceTree = "<group>"; };
+		A1B2C3D60123456789ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A1C492C67DC6A4011EF3CDE0 /* BackendSessionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackendSessionService.swift; path = BackendSessionService.swift; sourceTree = "<group>"; };
+		A35D470B99CD65F9C2709E24 /* Release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		A5DDE470F8A05C9EB3D3A949 /* OnDeviceSkinAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSkinAnalyzer.swift; sourceTree = "<group>"; };
+		A9C1111E0D8145C1B2210011 /* SkinJourneyLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyLog.swift; sourceTree = "<group>"; };
+		A9C1111E0D8145C1B2210012 /* SkinJourneyRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyRepository.swift; sourceTree = "<group>"; };
+		A9C1111E0D8145C1B2210013 /* SkinJourneyViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyViews.swift; sourceTree = "<group>"; };
 		A9D200000000000000001001 /* OnboardingDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingDraft.swift; sourceTree = "<group>"; };
 		A9D200000000000000001002 /* OnboardingDraftRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingDraftRepository.swift; sourceTree = "<group>"; };
 		A9D200000000000000001003 /* NotificationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationModels.swift; sourceTree = "<group>"; };
@@ -103,12 +133,7 @@
 		A9D200000000000000001103 /* OnboardingDraftRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingDraftRepositoryTests.swift; sourceTree = "<group>"; };
 		A9D200000000000000001104 /* SettingsRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRepositoryTests.swift; sourceTree = "<group>"; };
 		A9D200000000000000001105 /* LocalNotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationServiceTests.swift; sourceTree = "<group>"; };
-		A9C1111E0D8145C1B2210011 /* SkinJourneyLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyLog.swift; sourceTree = "<group>"; };
-		A9C1111E0D8145C1B2210012 /* SkinJourneyRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyRepository.swift; sourceTree = "<group>"; };
-		A9C1111E0D8145C1B2210013 /* SkinJourneyViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyViews.swift; sourceTree = "<group>"; };
-		930F2E9BF4065C3B90C0E710 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
-		97C6300F89C763F0D0340EAE /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
-		A5DDE470F8A05C9EB3D3A949 /* OnDeviceSkinAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSkinAnalyzer.swift; sourceTree = "<group>"; };
+		A9D200000000000000001106 /* CompositeSkinAnalysisServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeSkinAnalysisServiceTests.swift; sourceTree = "<group>"; };
 		B014D8543F15818D08504C08 /* BillingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingService.swift; sourceTree = "<group>"; };
 		B85FD535035CD233113566BC /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		B962EF34BB460BBCF95C2268 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
@@ -120,6 +145,7 @@
 		E0797336A6978E9EFBCEEC05 /* AnalysisRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisRepository.swift; sourceTree = "<group>"; };
 		E36C8E101165A58C2B48239F /* SkinScore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkinScore.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3B96F886D318F3CCA0386A2 /* OnboardingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViews.swift; sourceTree = "<group>"; };
+		E86484F464107D6B539113B2 /* RemoteDataSyncService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemoteDataSyncService.swift; path = RemoteDataSyncService.swift; sourceTree = "<group>"; };
 		EA4BA95003EEE7ECE6C5E8CF /* SkinScoreApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinScoreApp.swift; sourceTree = "<group>"; };
 		EABC74139F7D86A2F25167BE /* SkinAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinAnalysisService.swift; sourceTree = "<group>"; };
 		EE69A8F717CD30675B3989B2 /* RoutineCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineCard.swift; sourceTree = "<group>"; };
@@ -142,25 +168,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXResourcesBuildPhase section */
-		A1B2C3D80123456789ABCDEF /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D40123456789ABCDEF /* Assets.xcassets in Resources */,
-				A1B2C3D50123456789ABCDEF /* PrivacyInfo.xcprivacy in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A9D200000000000000003003 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		012A2A5950FD0CA5F671AB5D /* Onboarding */ = {
@@ -260,29 +267,9 @@
 				E5930B22A8F9C4D8CFB63C46 /* Persistence */,
 				F3C12C13968FA8521E60D6D2 /* Services */,
 				9824C18850CE784B419F325D /* Store */,
+				83ED3C922C7376BC8E6107B6 /* Backend */,
 			);
 			path = Core;
-			sourceTree = "<group>";
-		};
-		A9D200000000000000002001 /* Notifications */ = {
-			isa = PBXGroup;
-			children = (
-				A9D200000000000000001005 /* LocalNotificationService.swift */,
-				A9D200000000000000001003 /* NotificationModels.swift */,
-				A9D200000000000000001004 /* ReengagementPlanner.swift */,
-			);
-			path = Notifications;
-			sourceTree = "<group>";
-		};
-		A9D200000000000000002002 /* SkinScoreTests */ = {
-			isa = PBXGroup;
-			children = (
-				A9D200000000000000001104 /* SettingsRepositoryTests.swift */,
-				A9D200000000000000001103 /* OnboardingDraftRepositoryTests.swift */,
-				A9D200000000000000001105 /* LocalNotificationServiceTests.swift */,
-				A9D200000000000000001102 /* ReengagementPlannerTests.swift */,
-			);
-			path = SkinScoreTests;
 			sourceTree = "<group>";
 		};
 		574DC9D27E51300E73455390 /* Home */ = {
@@ -298,8 +285,32 @@
 			isa = PBXGroup;
 			children = (
 				15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */,
+				818A0F428A435C649F5ED1FF /* Environment */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		818A0F428A435C649F5ED1FF /* Environment */ = {
+			isa = PBXGroup;
+			children = (
+				77FF0337CF765F75BD26D924 /* Debug.xcconfig */,
+				A35D470B99CD65F9C2709E24 /* Release.xcconfig */,
+			);
+			name = Environment;
+			sourceTree = "<group>";
+		};
+		83ED3C922C7376BC8E6107B6 /* Backend */ = {
+			isa = PBXGroup;
+			children = (
+				2F9F0BB639B79346B5FEC6A7 /* BackendModels.swift */,
+				6881195FD7CA1DB4A7B7B148 /* BackendSessionStore.swift */,
+				A1C492C67DC6A4011EF3CDE0 /* BackendSessionService.swift */,
+				12FD5871C89833F70E337A99 /* ConvexBackendClient.swift */,
+				97C85474533A209581A5CB64 /* RemoteRepositories.swift */,
+				E86484F464107D6B539113B2 /* RemoteDataSyncService.swift */,
+			);
+			name = Backend;
+			path = Backend;
 			sourceTree = "<group>";
 		};
 		8C68EE11B0174C738ACEE43A /* Models */ = {
@@ -338,6 +349,28 @@
 				A9D200000000000000002002 /* SkinScoreTests */,
 				C49BD034564E9787435ED28F /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A9D200000000000000002001 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				A9D200000000000000001005 /* LocalNotificationService.swift */,
+				A9D200000000000000001003 /* NotificationModels.swift */,
+				A9D200000000000000001004 /* ReengagementPlanner.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		A9D200000000000000002002 /* SkinScoreTests */ = {
+			isa = PBXGroup;
+			children = (
+				A9D200000000000000001106 /* CompositeSkinAnalysisServiceTests.swift */,
+				A9D200000000000000001104 /* SettingsRepositoryTests.swift */,
+				A9D200000000000000001103 /* OnboardingDraftRepositoryTests.swift */,
+				A9D200000000000000001105 /* LocalNotificationServiceTests.swift */,
+				A9D200000000000000001102 /* ReengagementPlannerTests.swift */,
+			);
+			path = SkinScoreTests;
 			sourceTree = "<group>";
 		};
 		AAEC4E3E79AA52CCA9BA67FD /* Theme */ = {
@@ -437,17 +470,25 @@
 		};
 /* End PBXGroup section */
 
-/* Begin PBXContainerItemProxy section */
-		A9D200000000000000004001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 06679EE2E4230BE4A0F97F4C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = EE7EDF85D4EF60BE6F10D172;
-			remoteInfo = SkinScore;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXNativeTarget section */
+		A9D200000000000000005001 /* SkinScoreTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A9D200000000000000006003 /* Build configuration list for PBXNativeTarget "SkinScoreTests" */;
+			buildPhases = (
+				A9D200000000000000003002 /* Sources */,
+				A9D200000000000000003001 /* Frameworks */,
+				A9D200000000000000003003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A9D200000000000000004002 /* PBXTargetDependency */,
+			);
+			name = SkinScoreTests;
+			productName = SkinScoreTests;
+			productReference = A9D200000000000000001101 /* SkinScoreTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		EE7EDF85D4EF60BE6F10D172 /* SkinScore */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25EA27BDB3F6EA3493590B2C /* Build configuration list for PBXNativeTarget "SkinScore" */;
@@ -467,26 +508,6 @@
 			productName = SkinScore;
 			productReference = E36C8E101165A58C2B48239F /* SkinScore.app */;
 			productType = "com.apple.product-type.application";
-		};
-		A9D200000000000000005001 /* SkinScoreTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = A9D200000000000000006003 /* Build configuration list for PBXNativeTarget "SkinScoreTests" */;
-			buildPhases = (
-				A9D200000000000000003002 /* Sources */,
-				A9D200000000000000003001 /* Frameworks */,
-				A9D200000000000000003003 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				A9D200000000000000004002 /* PBXTargetDependency */,
-			);
-			name = SkinScoreTests;
-			packageProductDependencies = (
-			);
-			productName = SkinScoreTests;
-			productReference = A9D200000000000000001101 /* SkinScoreTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -509,6 +530,7 @@
 			packageReferences = (
 				F9FAD7E1842E419E9B953712 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
+			productRefGroup = C49BD034564E9787435ED28F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -518,18 +540,26 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXSourcesBuildPhase section */
-		A9D200000000000000003002 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
+/* Begin PBXResourcesBuildPhase section */
+		A1B2C3D80123456789ABCDEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9D200000000000000000104 /* LocalNotificationServiceTests.swift in Sources */,
-				A9D200000000000000000102 /* OnboardingDraftRepositoryTests.swift in Sources */,
-				A9D200000000000000000101 /* ReengagementPlannerTests.swift in Sources */,
-				A9D200000000000000000103 /* SettingsRepositoryTests.swift in Sources */,
+				A1B2C3D40123456789ABCDEF /* Assets.xcassets in Resources */,
+				A1B2C3D50123456789ABCDEF /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A9D200000000000000003003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
 		3FE1C954E828A3002C2783FF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -582,14 +612,41 @@
 				D9993F854F38ED9AD44E847C /* UploadView.swift in Sources */,
 				553B0F7B9D855FE168A9B5B8 /* UserRepository.swift in Sources */,
 				E8633DF747A3935D7FE583F8 /* VisionFaceDetectionService.swift in Sources */,
+				C53EB1477DB895C4E02698B3 /* BackendModels.swift in Sources */,
+				3BDA110D7C08BBF7CB56DC79 /* BackendSessionStore.swift in Sources */,
+				CC55D3F4C6763200E37FD726 /* BackendSessionService.swift in Sources */,
+				F22E868DB33E968FBB8BD88F /* ConvexBackendClient.swift in Sources */,
+				6267F4EBFA4B51E2E094D5EF /* RemoteRepositories.swift in Sources */,
+				F182222A196B91487169C3EF /* RemoteDataSyncService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A9D200000000000000003002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9D200000000000000000105 /* CompositeSkinAnalysisServiceTests.swift in Sources */,
+				A9D200000000000000000104 /* LocalNotificationServiceTests.swift in Sources */,
+				A9D200000000000000000102 /* OnboardingDraftRepositoryTests.swift in Sources */,
+				A9D200000000000000000101 /* ReengagementPlannerTests.swift in Sources */,
+				A9D200000000000000000103 /* SettingsRepositoryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		A9D200000000000000004002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE7EDF85D4EF60BE6F10D172 /* SkinScore */;
+			targetProxy = A9D200000000000000004001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
 		1945D1A078106F42ABF94653 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A35D470B99CD65F9C2709E24 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -648,12 +705,11 @@
 		};
 		371852B5C636D80DA153D49E /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A35D470B99CD65F9C2709E24 /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SkinScore.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GOOGLE_CLIENT_ID = "761568363778-qalajuv5ts953ispbj930igvck6lqe52.apps.googleusercontent.com";
-				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.761568363778-qalajuv5ts953ispbj930igvck6lqe52";
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -661,14 +717,31 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
 				SDKROOT = iphoneos;
-				SKIN_ANALYSIS_API_AUTH_TOKEN = "";
-				SKIN_ANALYSIS_API_ENDPOINT = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
+		52AB91DA13FFEBAD3740BE5A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 77FF0337CF765F75BD26D924 /* Debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/SkinScore.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		A9D200000000000000006001 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 77FF0337CF765F75BD26D924 /* Debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
@@ -691,6 +764,7 @@
 		};
 		A9D200000000000000006002 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A35D470B99CD65F9C2709E24 /* Release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
@@ -710,29 +784,9 @@
 			};
 			name = Release;
 		};
-		52AB91DA13FFEBAD3740BE5A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Resources/SkinScore.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GOOGLE_CLIENT_ID = "761568363778-qalajuv5ts953ispbj930igvck6lqe52.apps.googleusercontent.com";
-				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.761568363778-qalajuv5ts953ispbj930igvck6lqe52";
-				INFOPLIST_FILE = Resources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
-				SDKROOT = iphoneos;
-				SKIN_ANALYSIS_API_AUTH_TOKEN = "";
-				SKIN_ANALYSIS_API_ENDPOINT = "";
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
 		D185D48E0A77CD42FD177086 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 77FF0337CF765F75BD26D924 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -827,14 +881,6 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
-
-/* Begin PBXTargetDependency section */
-		A9D200000000000000004002 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = EE7EDF85D4EF60BE6F10D172 /* SkinScore */;
-			targetProxy = A9D200000000000000004001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		F9FAD7E1842E419E9B953712 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {

@@ -679,10 +679,6 @@ private enum SkinJourneyPlanner {
         "Luminosity": ["vitamin_c", "spf", "hydrating_serum"],
         "Texture": ["retinoid", "niacinamide", "cleanser"],
         "Uniformity": ["vitamin_c", "azelaic_acid", "spf"],
-        "Elasticity": ["retinoid", "moisturizer", "spf"],
-        "Pores": ["salicylic_acid", "niacinamide", "cleanser"],
-        "Oiliness": ["niacinamide", "cleanser", "moisturizer"],
-        "UV Damage": ["spf", "moisturizer", "vitamin_c"],
     ]
 
     static func makeSuggestion(

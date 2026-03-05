@@ -1,0 +1,9 @@
+// Fill these values before TestFlight / App Store submission.
+// Keep secrets out of the iOS bundle. The app should only know the backend base URL
+// and public client identifiers required by the native sign-in SDKs.
+
+GOOGLE_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID =
+SKIN_ANALYSIS_API_ENDPOINT =
+APP_SHARE_URL =
+

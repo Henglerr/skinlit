@@ -24,8 +24,24 @@ struct SkinScoreApp: App {
             let notificationCenter = UNUserNotificationCenter.current()
             let notificationService = LocalNotificationService(center: notificationCenter)
             let billingService = StoreKitBillingService(productIDs: AppConfig.subscriptionProductIds)
-            let skinAnalysisService = CompositeSkinAnalysisService()
             let faceDetectionService = VisionFaceDetectionService()
+            let backendClient = ConvexBackendClient()
+            let backendSessionService = BackendSessionService(client: backendClient)
+            let remoteOnboardingRepository = RemoteOnboardingRepository(
+                client: backendClient,
+                sessionService: backendSessionService
+            )
+            let remoteScanRepository = RemoteScanRepository(
+                client: backendClient,
+                sessionService: backendSessionService
+            )
+            let remoteJourneyRepository = RemoteJourneyRepository(
+                client: backendClient,
+                sessionService: backendSessionService
+            )
+            let skinAnalysisService = CompositeSkinAnalysisService(
+                remoteRepository: remoteScanRepository
+            )
 
             notificationCenter.delegate = notificationService
 
@@ -35,7 +51,8 @@ struct SkinScoreApp: App {
                 onboardingRepository: onboardingRepository,
                 analysisRepository: analysisRepository,
                 skinJourneyRepository: skinJourneyRepository,
-                settingsRepository: settingsRepository
+                settingsRepository: settingsRepository,
+                backendSessionService: backendSessionService
             )
 
             _appState = StateObject(
@@ -49,7 +66,10 @@ struct SkinScoreApp: App {
                     notificationService: notificationService,
                     billingService: billingService,
                     skinAnalysisService: skinAnalysisService,
-                    faceDetectionService: faceDetectionService
+                    faceDetectionService: faceDetectionService,
+                    remoteOnboardingRepository: remoteOnboardingRepository,
+                    remoteScanRepository: remoteScanRepository,
+                    remoteJourneyRepository: remoteJourneyRepository
                 )
             )
         } catch {

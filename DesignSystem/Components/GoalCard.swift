@@ -2,14 +2,16 @@ import SwiftUI
 
 public struct GoalCard: View {
     public let title: String
+    public let symbolName: String?
     public let description: String
     public let isSelected: Bool
     public let action: () -> Void
     
     @State private var isPressed: Bool = false
     
-    public init(title: String, description: String, isSelected: Bool, action: @escaping () -> Void) {
+    public init(title: String, symbolName: String? = nil, description: String, isSelected: Bool, action: @escaping () -> Void) {
         self.title = title
+        self.symbolName = symbolName
         self.description = description
         self.isSelected = isSelected
         self.action = action
@@ -36,14 +38,26 @@ public struct GoalCard: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                    HStack(spacing: 8) {
+                        if let symbolName {
+                            Image(systemName: symbolName)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(isSelected
+                                    ? AppTheme.shared.current.colors.accent
+                                    : AppTheme.shared.current.colors.textSecondary)
+                        }
+
+                        Text(title)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                    }
                     
-                    Text(description)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(isSelected ? AppTheme.shared.current.colors.textPrimary : AppTheme.shared.current.colors.textSecondary)
-                        .multilineTextAlignment(.leading)
+                    if !description.isEmpty {
+                        Text(description)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(isSelected ? AppTheme.shared.current.colors.textPrimary : AppTheme.shared.current.colors.textSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
                 }
                 
                 Spacer()

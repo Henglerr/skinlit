@@ -5,7 +5,7 @@ import Charts
 
 struct SkinMetric: Identifiable {
     let id: String
-    let icon: String
+    let symbolName: String
     let score: Double
     let aiInsight: String
     let routineFix: String
@@ -63,20 +63,16 @@ struct HomeView: View {
     // ── Metric definitions (free vs premium, with AI text) ───────────────────
     private var metrics: [SkinMetric] {
         guard activeAnalysis != nil else { return [] }   // no data yet = no metrics
-        let allDefs: [(id: String, icon: String, isPremium: Bool)] = [
-            ("Hydration",  "💧", false),
-            ("Luminosity", "✨", false),
-            ("Texture",    "🧬", false),
-            ("Uniformity", "🎨", true),
-            ("Elasticity", "🧪", true),
-            ("Pores",      "🔬", true),
-            ("Oiliness",   "💎", true),
-            ("UV Damage",  "☀️", true),
+        let allDefs: [(id: String, symbolName: String, isPremium: Bool)] = [
+            ("Hydration", "drop.fill", false),
+            ("Luminosity", "sparkles", false),
+            ("Texture", "square.grid.3x3.fill", true),
+            ("Uniformity", "circle.lefthalf.filled", true),
         ]
         return allDefs.map { def in
             let score = latestCriteria[def.id] ?? 0.0   // 0 = truly no data
             let isLockedPremium = def.isPremium && !appState.isProActive
-            return SkinMetric(id: def.id, icon: def.icon, score: score,
+            return SkinMetric(id: def.id, symbolName: def.symbolName, score: score,
                               aiInsight: insightText(for: def.id, score: score),
                               routineFix: routineFixText(for: def.id, score: score),
                               isPremium: isLockedPremium)
@@ -233,10 +229,12 @@ struct HomeView: View {
                 Label("Restore Purchases", systemImage: "arrow.clockwise")
             }
 
-            Button {
-                appState.navigate(to: .shareGate)
-            } label: {
-                Label("Share App", systemImage: "square.and.arrow.up")
+            if AppConfig.isShareConfigured() {
+                Button {
+                    appState.navigate(to: .shareGate)
+                } label: {
+                    Label("Share App", systemImage: "square.and.arrow.up")
+                }
             }
 
             Button {
@@ -557,7 +555,12 @@ struct HomeView: View {
             VStack(spacing: 11) {
                 ForEach(metrics) { metric in
                     HStack(spacing: 10) {
-                        Text(metric.icon).font(.system(size: 14)).frame(width: 20)
+                        Image(systemName: metric.symbolName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(metric.isPremium
+                                ? AppTheme.shared.current.colors.textTertiary
+                                : AppTheme.shared.current.colors.accent)
+                            .frame(width: 20)
 
                         Text(metric.id)
                             .font(.system(size: 12, weight: .semibold))
@@ -1091,11 +1094,18 @@ struct MetricDetailCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(metric.icon) \(metric.id)")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(metric.isPremium
-                            ? AppTheme.shared.current.colors.textTertiary
-                            : AppTheme.shared.current.colors.textPrimary)
+                    HStack(spacing: 6) {
+                        Image(systemName: metric.symbolName)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(metric.isPremium
+                                ? AppTheme.shared.current.colors.textTertiary
+                                : AppTheme.shared.current.colors.accent)
+                        Text(metric.id)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(metric.isPremium
+                                ? AppTheme.shared.current.colors.textTertiary
+                                : AppTheme.shared.current.colors.textPrimary)
+                    }
                     Text(statusLabel(for: metric.score))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(scoreColor(for: metric.score))

@@ -1,66 +1,243 @@
 import Foundation
-import UIKit
 
 public enum SkinAnalysisRemoteError: LocalizedError {
-    case missingEndpoint
+    case missingAPIKey
+    case invalidEndpoint(String)
+    case referenceCatalogIncomplete(missingIDs: [String])
     case invalidImage
+    case insufficientImageQuality(reasons: [SkinImageQualityReason])
     case requestFailed(statusCode: Int, message: String)
     case malformedResponse
     case invalidPayload
+    case contextVerificationFailed(expectedVersion: String, receivedVersion: String?)
 
     public var errorDescription: String? {
         switch self {
-        case .missingEndpoint:
-            return "Cloud analysis endpoint is not configured."
+        case .missingAPIKey:
+            return "OpenAI API key is not configured. Add your API key before running scans."
+        case let .invalidEndpoint(endpoint):
+            return "The analysis endpoint is invalid: \(endpoint)"
+        case let .referenceCatalogIncomplete(missingIDs):
+            let preview = missingIDs.prefix(4).joined(separator: ", ")
+            return "Reference catalog is incomplete. Missing: \(preview). Add all 25 reference images before scanning."
         case .invalidImage:
             return "The selected image could not be prepared for analysis."
+        case let .insufficientImageQuality(reasons):
+            let details = reasons.map(\.userFacingDescription).joined(separator: ", ")
+            return "Photo quality is not good enough for a reliable skin score. Issues: \(details)."
         case let .requestFailed(_, message):
-            return "Cloud analysis failed: \(message)"
+            return "OpenAI analysis failed: \(message)"
         case .malformedResponse:
-            return "Cloud analysis returned an unexpected response format."
+            return "OpenAI returned an unexpected response format."
         case .invalidPayload:
-            return "Cloud analysis returned invalid data."
+            return "OpenAI returned invalid analysis data."
+        case let .contextVerificationFailed(expectedVersion, receivedVersion):
+            if let receivedVersion, !receivedVersion.isEmpty {
+                return "Analysis used the wrong prompt version. Expected \(expectedVersion), got \(receivedVersion)."
+            }
+            return "Analysis did not confirm the expected prompt version \(expectedVersion)."
         }
     }
 }
 
-public struct BackendSkinAnalysisClient: SkinAnalysisRemoteClient {
+public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
     private let endpointString: String
     private let authToken: String
+    private let model: String
     private let session: URLSession
+    private let analysisVersion: String
+    private let referenceCatalogLoader: () throws -> SkinReferenceCatalog
 
     public var isConfigured: Bool {
-        let trimmed = endpointString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return false }
-        guard !trimmed.contains("$(") else { return false }
-        return URL(string: trimmed) != nil
+        let trimmed = authToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && !trimmed.contains("$(")
     }
 
     public init(bundle: Bundle = .main, session: URLSession = .shared) {
         self.endpointString = AppConfig.skinAnalysisAPIEndpoint(bundle: bundle)
-        self.authToken = AppConfig.skinAnalysisAPIAuthToken(bundle: bundle)
+        self.authToken = AppConfig.openAIAPIKey(bundle: bundle)
+        self.model = AppConfig.openAIVisionModel(bundle: bundle)
         self.session = session
+        self.analysisVersion = AppConfig.skinAnalysisVersion
+        self.referenceCatalogLoader = { try SkinReferenceCatalog(bundle: bundle) }
     }
 
-    public func analyze(imageData: Data) async throws -> OnDeviceAnalysisResult {
-        guard isConfigured, let endpoint = URL(string: endpointString) else {
-            throw SkinAnalysisRemoteError.missingEndpoint
+    init(
+        endpointString: String = "",
+        authToken: String = "",
+        model: String = AppConfig.defaultOpenAIVisionModel,
+        session: URLSession = .shared,
+        analysisVersion: String = AppConfig.skinAnalysisVersion,
+        referenceCatalogLoader: @escaping () throws -> SkinReferenceCatalog
+    ) {
+        self.endpointString = endpointString
+        self.authToken = authToken
+        self.model = model
+        self.session = session
+        self.analysisVersion = analysisVersion
+        self.referenceCatalogLoader = referenceCatalogLoader
+    }
+
+    public func analyze(imageData: Data, userContext: SkinAnalysisUserContext?) async throws -> OnDeviceAnalysisResult {
+        guard isConfigured else {
+            throw SkinAnalysisRemoteError.missingAPIKey
         }
 
-        let preparedImageData = try prepareImageData(imageData)
-        let payload = BackendAnalysisRequest(
-            imageBase64: preparedImageData.base64EncodedString(),
-            mimeType: "image/jpeg",
-            source: "ios"
+        let endpoint = try resolveEndpoint()
+        let referenceCatalog = try referenceCatalogLoader()
+        try referenceCatalog.validateRequiredAssets()
+
+        let normalizedImageData: Data
+        do {
+            normalizedImageData = try FaceImageProcessor.normalizedVariant(from: imageData)
+        } catch {
+            throw SkinAnalysisRemoteError.invalidImage
+        }
+
+        let classifierReferences = try referenceCatalog.assets(for: AppConfig.centerReferenceIDs)
+        let classification = try await classifyBand(
+            endpoint: endpoint,
+            rawImageData: imageData,
+            normalizedImageData: normalizedImageData,
+            references: classifierReferences,
+            userContext: userContext
+        )
+        try verifyAnalysisVersion(classification.analysisVersion)
+
+        if classification.imageQualityStatus == .insufficient {
+            throw SkinAnalysisRemoteError.insufficientImageQuality(reasons: classification.imageQualityReasons)
+        }
+
+        let detailedReferences = try referenceCatalog.assets(
+            for: AppConfig.detailedReferenceIDs(for: classification.predictedBand)
+        )
+        let detailed = try await requestDetailedAssessment(
+            endpoint: endpoint,
+            rawImageData: imageData,
+            normalizedImageData: normalizedImageData,
+            predictedBand: classification.predictedBand,
+            references: detailedReferences,
+            userContext: userContext
+        )
+        try verifyAnalysisVersion(detailed.analysisVersion)
+
+        let normalizedCriteria = normalizeCriteria(detailed.criteria)
+        let score = SkinScoreComputation.finalScore(
+            criteria: normalizedCriteria,
+            observedConditions: detailed.observedConditions
         )
 
-        let bodyData = try JSONEncoder().encode(payload)
+        return OnDeviceAnalysisResult(
+            score: score,
+            summary: normalizedSummary(detailed.summary),
+            skinTypeDetected: detailed.skinTypeDetected.nonEmpty ?? "Unknown",
+            criteria: normalizedCriteria
+        )
+    }
+
+    private func classifyBand(
+        endpoint: URL,
+        rawImageData: Data,
+        normalizedImageData: Data,
+        references: [SkinReferenceAsset],
+        userContext: SkinAnalysisUserContext?
+    ) async throws -> SkinBandClassifierResponse {
+        let responseText = try await performStructuredRequest(
+            endpoint: endpoint,
+            schemaName: "skin_band_classifier",
+            schema: classificationSchema(),
+            developerPrompt: AppConfig.classificationPrompt(userContext: userContext),
+            supportingText: classificationSupportingText(references: references),
+            imageItems: makeImageItems(
+                rawImageData: rawImageData,
+                normalizedImageData: normalizedImageData,
+                references: references
+            ),
+            maxOutputTokens: 400
+        )
+
+        return try decodeResponseText(responseText, as: SkinBandClassifierResponse.self)
+    }
+
+    private func requestDetailedAssessment(
+        endpoint: URL,
+        rawImageData: Data,
+        normalizedImageData: Data,
+        predictedBand: String,
+        references: [SkinReferenceAsset],
+        userContext: SkinAnalysisUserContext?
+    ) async throws -> SkinDetailedAssessmentResponse {
+        let responseText = try await performStructuredRequest(
+            endpoint: endpoint,
+            schemaName: "skin_detailed_assessment",
+            schema: detailedAssessmentSchema(),
+            developerPrompt: AppConfig.detailedAssessmentPrompt(userContext: userContext),
+            supportingText: detailedSupportingText(
+                predictedBand: predictedBand,
+                references: references
+            ),
+            imageItems: makeImageItems(
+                rawImageData: rawImageData,
+                normalizedImageData: normalizedImageData,
+                references: references
+            ),
+            maxOutputTokens: 700
+        )
+
+        return try decodeResponseText(responseText, as: SkinDetailedAssessmentResponse.self)
+    }
+
+    private func performStructuredRequest(
+        endpoint: URL,
+        schemaName: String,
+        schema: [String: Any],
+        developerPrompt: String,
+        supportingText: String,
+        imageItems: [[String: Any]],
+        maxOutputTokens: Int
+    ) async throws -> String {
+        let developerMessage: [String: Any] = [
+            "role": "developer",
+            "content": [
+                [
+                    "type": "input_text",
+                    "text": developerPrompt
+                ]
+            ]
+        ]
+
+        var userContent: [[String: Any]] = [
+            [
+                "type": "input_text",
+                "text": supportingText
+            ]
+        ]
+        userContent.append(contentsOf: imageItems)
+
+        let userMessage: [String: Any] = [
+            "role": "user",
+            "content": userContent
+        ]
+
+        let body: [String: Any] = [
+            "model": model,
+            "input": [developerMessage, userMessage],
+            "max_output_tokens": maxOutputTokens,
+            "text": [
+                "format": [
+                    "type": "json_schema",
+                    "name": schemaName,
+                    "schema": schema,
+                    "strict": true
+                ]
+            ]
+        ]
+
+        let bodyData = try JSONSerialization.data(withJSONObject: body, options: [])
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        }
+        request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
         request.httpBody = bodyData
 
         let (data, response) = try await session.data(for: request)
@@ -73,57 +250,229 @@ public struct BackendSkinAnalysisClient: SkinAnalysisRemoteClient {
             throw SkinAnalysisRemoteError.requestFailed(statusCode: httpResponse.statusCode, message: message)
         }
 
-        let decoded = try decodePayload(from: data)
-        let normalizedCriteria = normalizeCriteria(decoded.criteria)
-        let normalizedScore = normalizeScore(decoded.score, criteria: normalizedCriteria)
-
-        return OnDeviceAnalysisResult(
-            score: normalizedScore,
-            summary: decoded.summary.nonEmpty ?? "Analysis complete.",
-            skinTypeDetected: decoded.skinTypeDetected.nonEmpty ?? "Unknown",
-            criteria: normalizedCriteria
-        )
+        return try extractOutputText(from: data)
     }
 
-    private func prepareImageData(_ imageData: Data) throws -> Data {
-        guard let image = UIImage(data: imageData) else {
-            throw SkinAnalysisRemoteError.invalidImage
+    private func makeImageItems(
+        rawImageData: Data,
+        normalizedImageData: Data,
+        references: [SkinReferenceAsset]
+    ) -> [[String: Any]] {
+        var items: [[String: Any]] = [
+            imageItem(imageData: rawImageData, mimeType: "image/jpeg"),
+            imageItem(imageData: normalizedImageData, mimeType: "image/jpeg")
+        ]
+
+        items.append(contentsOf: references.map { reference in
+            imageItem(imageData: reference.imageData, mimeType: reference.mimeType)
+        })
+        return items
+    }
+
+    private func imageItem(imageData: Data, mimeType: String) -> [String: Any] {
+        [
+            "type": "input_image",
+            "image_url": "data:\(mimeType);base64,\(imageData.base64EncodedString())",
+            "detail": "high"
+        ]
+    }
+
+    private func classificationSupportingText(references: [SkinReferenceAsset]) -> String {
+        let referenceLines = references.enumerated().map { index, reference in
+            "\(index + 3). \(reference.anchor.id) | band \(reference.bandLabel) | suggested \(reference.anchor.suggestedScore) | \(reference.anchor.description)"
+        }.joined(separator: "\n")
+
+        return """
+Image order:
+1. User selfie raw face crop.
+2. User selfie normalized face crop for exposure balancing only.
+\(referenceLines)
+
+Use the attached reference images as band anchors. Return JSON only.
+"""
+    }
+
+    private func detailedSupportingText(
+        predictedBand: String,
+        references: [SkinReferenceAsset]
+    ) -> String {
+        let referenceLines = references.enumerated().map { index, reference in
+            "\(index + 3). \(reference.anchor.id) | band \(reference.bandLabel) | suggested \(reference.anchor.suggestedScore) | \(reference.anchor.description)"
+        }.joined(separator: "\n")
+
+        return """
+The coarse classifier placed this selfie closest to band \(predictedBand).
+
+Image order:
+1. User selfie raw face crop.
+2. User selfie normalized face crop for exposure balancing only.
+\(referenceLines)
+
+Use these anchors to grade the four criteria and objective conditions.
+Do not return an overall score.
+Return JSON only.
+"""
+    }
+
+    private func classificationSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "analysis_version",
+                "image_quality_status",
+                "image_quality_reasons",
+                "predicted_band",
+                "observed_conditions"
+            ],
+            "properties": [
+                "analysis_version": [
+                    "type": "string",
+                    "enum": [analysisVersion]
+                ],
+                "image_quality_status": [
+                    "type": "string",
+                    "enum": ["ok", "insufficient"]
+                ],
+                "image_quality_reasons": [
+                    "type": "array",
+                    "items": [
+                        "type": "string",
+                        "enum": AppConfig.imageQualityReasonValues
+                    ]
+                ],
+                "predicted_band": [
+                    "type": "string",
+                    "enum": ["0-2", "2-4", "4-6", "6-8", "8-10"]
+                ],
+                "observed_conditions": observedConditionsSchema()
+            ]
+        ]
+    }
+
+    private func detailedAssessmentSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "analysis_version",
+                "summary",
+                "skin_type_detected",
+                "criteria",
+                "observed_conditions"
+            ],
+            "properties": [
+                "analysis_version": [
+                    "type": "string",
+                    "enum": [analysisVersion]
+                ],
+                "summary": [
+                    "type": "string"
+                ],
+                "skin_type_detected": [
+                    "type": "string"
+                ],
+                "criteria": [
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["Hydration", "Texture", "Uniformity", "Luminosity"],
+                    "properties": [
+                        "Hydration": numericCriterionSchema(),
+                        "Texture": numericCriterionSchema(),
+                        "Uniformity": numericCriterionSchema(),
+                        "Luminosity": numericCriterionSchema()
+                    ]
+                ],
+                "observed_conditions": observedConditionsSchema()
+            ]
+        ]
+    }
+
+    private func observedConditionsSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "active_inflammation",
+                "scarring_pitting",
+                "texture_irregularity",
+                "redness_irritation",
+                "dryness_flaking"
+            ],
+            "properties": [
+                "active_inflammation": severitySchema(),
+                "scarring_pitting": severitySchema(),
+                "texture_irregularity": severitySchema(),
+                "redness_irritation": severitySchema(),
+                "dryness_flaking": severitySchema()
+            ]
+        ]
+    }
+
+    private func severitySchema() -> [String: Any] {
+        [
+            "type": "string",
+            "enum": AppConfig.severityValues
+        ]
+    }
+
+    private func numericCriterionSchema() -> [String: Any] {
+        [
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+        ]
+    }
+
+    private func decodeResponseText<T: Decodable>(_ text: String, as type: T.Type) throws -> T {
+        guard let data = text.data(using: .utf8) else {
+            throw SkinAnalysisRemoteError.invalidPayload
+        }
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func extractOutputText(from data: Data) throws -> String {
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw SkinAnalysisRemoteError.malformedResponse
         }
 
-        let maxDimension: CGFloat = 1024
-        let size = image.size
-        let longestSide = max(size.width, size.height)
+        if let outputText = root["output_text"] as? String, let nonEmpty = outputText.nonEmpty {
+            return nonEmpty
+        }
 
-        let targetImage: UIImage
-        if longestSide > maxDimension {
-            let scale = maxDimension / longestSide
-            let targetSize = CGSize(width: size.width * scale, height: size.height * scale)
-            let renderer = UIGraphicsImageRenderer(size: targetSize)
-            targetImage = renderer.image { _ in
-                image.draw(in: CGRect(origin: .zero, size: targetSize))
+        if let output = root["output"] as? [[String: Any]] {
+            for item in output {
+                guard let content = item["content"] as? [[String: Any]] else { continue }
+                for part in content {
+                    if let text = part["text"] as? String, let nonEmpty = text.nonEmpty {
+                        return nonEmpty
+                    }
+                }
             }
-        } else {
-            targetImage = image
         }
 
-        guard let jpegData = targetImage.jpegData(compressionQuality: 0.82) else {
-            throw SkinAnalysisRemoteError.invalidImage
-        }
-
-        return jpegData
+        throw SkinAnalysisRemoteError.malformedResponse
     }
 
-    private func decodePayload(from data: Data) throws -> BackendAnalysisPayload {
-        let decoder = JSONDecoder()
-        if let direct = try? decoder.decode(BackendAnalysisPayload.self, from: data) {
-            return direct
+    private func responseErrorMessage(from data: Data) -> String? {
+        guard
+            let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = root["error"] as? [String: Any],
+            let message = error["message"] as? String
+        else {
+            return nil
         }
 
-        if let envelope = try? decoder.decode(BackendAnalysisEnvelope.self, from: data) {
-            return envelope.analysis
-        }
+        return message
+    }
 
-        throw SkinAnalysisRemoteError.invalidPayload
+    private func verifyAnalysisVersion(_ receivedVersion: String) throws {
+        guard receivedVersion == analysisVersion else {
+            throw SkinAnalysisRemoteError.contextVerificationFailed(
+                expectedVersion: analysisVersion,
+                receivedVersion: receivedVersion.nonEmpty
+            )
+        }
     }
 
     private func normalizeCriteria(_ rawCriteria: [String: Double]) -> [String: Double] {
@@ -148,26 +497,27 @@ public struct BackendSkinAnalysisClient: SkinAnalysisRemoteClient {
         return normalized
     }
 
-    private func normalizeScore(_ rawScore: Double, criteria: [String: Double]) -> Double {
-        let clamped = clamp(rawScore, min: 0, max: 10)
-        if clamped > 0 {
-            return round1(clamped)
-        }
+    private func normalizedSummary(_ rawSummary: String) -> String {
+        let trimmed = rawSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Analysis complete." }
 
-        let average = criteria.values.reduce(0, +) / Double(criteria.count)
-        return round1(clamp(average, min: 0, max: 10))
+        let words = trimmed.split(whereSeparator: \.isWhitespace)
+        if words.count <= 12 {
+            return trimmed
+        }
+        return words.prefix(12).joined(separator: " ")
     }
 
-    private func responseErrorMessage(from data: Data) -> String? {
-        guard
-            let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let error = root["error"] as? [String: Any],
-            let message = error["message"] as? String
-        else {
-            return nil
+    private func resolveEndpoint() throws -> URL {
+        let trimmed = endpointString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed.contains("$(") {
+            return AppConfig.defaultOpenAIResponsesURL
         }
 
-        return message
+        guard let url = URL(string: trimmed) else {
+            throw SkinAnalysisRemoteError.invalidEndpoint(trimmed)
+        }
+        return url
     }
 
     private func clamp(_ value: Double, min minValue: Double, max maxValue: Double) -> Double {
@@ -179,37 +529,8 @@ public struct BackendSkinAnalysisClient: SkinAnalysisRemoteClient {
     }
 }
 
-public typealias OpenAIVisionSkinAnalyzer = BackendSkinAnalysisClient
-
-private struct BackendAnalysisRequest: Encodable {
-    let imageBase64: String
-    let mimeType: String
-    let source: String
-
-    enum CodingKeys: String, CodingKey {
-        case imageBase64 = "image_base64"
-        case mimeType = "mime_type"
-        case source
-    }
-}
-
-private struct BackendAnalysisEnvelope: Decodable {
-    let analysis: BackendAnalysisPayload
-}
-
-private struct BackendAnalysisPayload: Decodable {
-    let score: Double
-    let summary: String
-    let skinTypeDetected: String
-    let criteria: [String: Double]
-
-    enum CodingKeys: String, CodingKey {
-        case score
-        case summary
-        case skinTypeDetected = "skin_type_detected"
-        case criteria
-    }
-}
+public typealias BackendSkinAnalysisClient = OpenAIResponsesSkinAnalyzer
+public typealias OpenAIVisionSkinAnalyzer = OpenAIResponsesSkinAnalyzer
 
 private extension String {
     var nonEmpty: String? {

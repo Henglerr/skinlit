@@ -54,11 +54,13 @@ private enum ImageFingerprint {
 
 #if DEBUG
 private let RESET_ONBOARDING_EACH_LAUNCH = false
+private let FORCE_DEBUG_PRO_ACCESS = false
+private let DEBUG_PRO_PLAN_ID = "debug.pro.testing"
 #endif
 
 @MainActor
 public class AppState: ObservableObject {
-    private static let analysisCacheVersion = "2026-02-24-proxy-v1"
+    private static let analysisCacheVersion = "2026-03-03-convex-backend-v1"
     private let authService: AuthService
     private let onboardingDraftRepository: OnboardingDraftRepository
     private let onboardingRepository: OnboardingRepository
@@ -69,6 +71,9 @@ public class AppState: ObservableObject {
     private let billingService: BillingService
     private let skinAnalysisService: SkinAnalysisService
     private let faceDetectionService: FaceDetectionService
+    private let remoteOnboardingRepository: RemoteOnboardingRepository?
+    private let remoteScanRepository: RemoteScanRepository?
+    private let remoteJourneyRepository: RemoteJourneyRepository?
     private var pendingScanImageData: Data?
 
     @Published public var currentRoute: [AppRoute] = []
@@ -140,7 +145,10 @@ public class AppState: ObservableObject {
         notificationService: NotificationService,
         billingService: BillingService,
         skinAnalysisService: SkinAnalysisService,
-        faceDetectionService: FaceDetectionService
+        faceDetectionService: FaceDetectionService,
+        remoteOnboardingRepository: RemoteOnboardingRepository? = nil,
+        remoteScanRepository: RemoteScanRepository? = nil,
+        remoteJourneyRepository: RemoteJourneyRepository? = nil
     ) {
         self.authService = authService
         self.onboardingDraftRepository = onboardingDraftRepository
@@ -152,6 +160,9 @@ public class AppState: ObservableObject {
         self.billingService = billingService
         self.skinAnalysisService = skinAnalysisService
         self.faceDetectionService = faceDetectionService
+        self.remoteOnboardingRepository = remoteOnboardingRepository
+        self.remoteScanRepository = remoteScanRepository
+        self.remoteJourneyRepository = remoteJourneyRepository
         self.isGoogleConfigured = authService.isGoogleSignInAvailable
     }
 
@@ -362,6 +373,13 @@ public class AppState: ObservableObject {
                 goal: goal,
                 routine: routine
             )
+            if shouldUseRemoteBackend(for: session) {
+                try await remoteOnboardingRepository?.saveProfile(
+                    skinTypes: onboardingDraftSkinTypes.sorted(),
+                    goal: goal,
+                    routineLevel: routine
+                )
+            }
             try onboardingDraftRepository.deleteDraft(userId: session.localUserId)
             hasCompletedOnboarding = true
             clearOnboardingDraft()
@@ -371,7 +389,7 @@ public class AppState: ObservableObject {
             await refreshPaywallData()
             await refreshReengagementNotifications()
         } catch {
-            authErrorMessage = "Could not save onboarding preferences locally."
+            authErrorMessage = "Could not save onboarding preferences."
         }
     }
 
@@ -385,18 +403,17 @@ public class AppState: ObservableObject {
     ) {
         guard let userId = currentSession?.localUserId else { return }
         do {
-            let criteriaData = try JSONEncoder().encode(criteria)
-            let criteriaJSON = String(data: criteriaData, encoding: .utf8) ?? "{}"
-            try analysisRepository.saveAnalysis(
+            let existing = try analysisRepository.analysis(byId: id)
+            try saveAnalysisCache(
                 id: id,
                 userId: userId,
                 score: score,
                 summary: summary,
                 skinTypeDetected: skinTypeDetected,
                 imageHash: imageHash,
-                criteriaJSON: criteriaJSON
+                criteria: criteria
             )
-            if !isProActive {
+            if existing == nil && !isProActive {
                 installConsumedFreeScans += 1
             }
             try loadRecentAnalyses(for: userId)
@@ -406,6 +423,28 @@ public class AppState: ObservableObject {
         } catch {
             authErrorMessage = "Could not save this analysis."
         }
+    }
+
+    private func saveAnalysisCache(
+        id: String,
+        userId: String,
+        score: Double,
+        summary: String,
+        skinTypeDetected: String,
+        imageHash: String?,
+        criteria: [String: Double]
+    ) throws {
+        let criteriaData = try JSONEncoder().encode(criteria)
+        let criteriaJSON = String(data: criteriaData, encoding: .utf8) ?? "{}"
+        try analysisRepository.saveAnalysis(
+            id: id,
+            userId: userId,
+            score: score,
+            summary: summary,
+            skinTypeDetected: skinTypeDetected,
+            imageHash: imageHash,
+            criteriaJSON: criteriaJSON
+        )
     }
 
     public func refreshRecentAnalyses() {
@@ -419,6 +458,12 @@ public class AppState: ObservableObject {
         } catch {
             authErrorMessage = "Could not load recent analyses."
         }
+
+        if shouldUseRemoteBackend(for: currentSession) {
+            Task {
+                await synchronizeRemoteAnalysesIfNeeded()
+            }
+        }
     }
 
     public func refreshSkinJourneyLogs() {
@@ -431,6 +476,12 @@ public class AppState: ObservableObject {
             try loadSkinJourneyLogs(for: userId)
         } catch {
             authErrorMessage = "Could not load your skin journey."
+        }
+
+        if shouldUseRemoteBackend(for: currentSession) {
+            Task {
+                await synchronizeRemoteJourneyIfNeeded()
+            }
         }
     }
 
@@ -453,6 +504,27 @@ public class AppState: ObservableObject {
                 note: note
             )
             try loadSkinJourneyLogs(for: userId)
+            if let session = currentSession, shouldUseRemoteBackend(for: session) {
+                let remoteLog = RemoteJourneyLog(
+                    dayKey: SkinJourneyRepository.dayKey(for: date),
+                    dayStartAt: SkinJourneyRepository.startOfDay(for: date),
+                    routineStepIDs: routineStepIDs,
+                    treatmentIDs: treatmentIDs,
+                    skinStatusIDs: skinStatusIDs,
+                    note: SkinJourneyLog.trimmedNote(note),
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+                Task {
+                    do {
+                        try await remoteJourneyRepository?.saveLog(remoteLog)
+                    } catch {
+                        await MainActor.run {
+                            self.authErrorMessage = "Could not sync your skin journey."
+                        }
+                    }
+                }
+            }
         } catch {
             authErrorMessage = "Could not save your skin journey."
         }
@@ -464,6 +536,18 @@ public class AppState: ObservableObject {
         do {
             try skinJourneyRepository.deleteLog(userId: userId, date: date)
             try loadSkinJourneyLogs(for: userId)
+            if let session = currentSession, shouldUseRemoteBackend(for: session) {
+                let dayKey = SkinJourneyRepository.dayKey(for: date)
+                Task {
+                    do {
+                        try await remoteJourneyRepository?.deleteLog(dayKey: dayKey)
+                    } catch {
+                        await MainActor.run {
+                            self.authErrorMessage = "Could not sync the deleted skin journey entry."
+                        }
+                    }
+                }
+            }
         } catch {
             authErrorMessage = "Could not delete this skin journey log."
         }
@@ -495,7 +579,6 @@ public class AppState: ObservableObject {
             return nil
         }
 
-        pendingScanImageData = nil
         let rawImageHash = ImageFingerprint.stableHash(for: imageData)
         let imageHash = rawImageHash.map { "\(Self.analysisCacheVersion):\($0)" }
 
@@ -505,6 +588,7 @@ public class AppState: ObservableObject {
                     try analysisRepository.touchAnalysis(id: existing.id)
                     try loadRecentAnalyses(for: userId)
                     await refreshReengagementNotifications()
+                    pendingScanImageData = nil
                     scanErrorMessage = nil
                     return existing.id
                 }
@@ -520,17 +604,30 @@ public class AppState: ObservableObject {
                 return nil
             }
 
-            let result = try await skinAnalysisService.analyze(imageData: imageData)
-            let analysisId = UUID().uuidString
+            let outcome: SkinAnalysisOutcome
+            if currentSession?.provider == .guest {
+                let localResult = try OnDeviceSkinAnalyzer.analyze(imageData: imageData)
+                outcome = SkinAnalysisOutcome(
+                    analysisID: UUID().uuidString,
+                    result: localResult
+                )
+            } else {
+                outcome = try await skinAnalysisService.analyze(
+                    imageData: imageData,
+                    imageHash: imageHash,
+                    userContext: currentSkinAnalysisUserContext()
+                )
+            }
             persistAnalysis(
-                id: analysisId,
-                score: result.score,
-                summary: result.summary,
-                skinTypeDetected: result.skinTypeDetected,
+                id: outcome.analysisID,
+                score: outcome.result.score,
+                summary: outcome.result.summary,
+                skinTypeDetected: outcome.result.skinTypeDetected,
                 imageHash: imageHash,
-                criteria: result.criteria
+                criteria: outcome.result.criteria
             )
-            return analysisId
+            pendingScanImageData = nil
+            return outcome.analysisID
         } catch {
             if let localized = (error as? LocalizedError)?.errorDescription, !localized.isEmpty {
                 scanErrorMessage = localized
@@ -600,6 +697,8 @@ public class AppState: ObservableObject {
         isAuthenticated = true
         scanErrorMessage = nil
 
+        await synchronizeRemoteCacheIfNeeded(for: session)
+
         do {
             hasCompletedOnboarding = try onboardingRepository.hasCompletedOnboarding(userId: session.localUserId)
             if hasCompletedOnboarding {
@@ -629,6 +728,114 @@ public class AppState: ObservableObject {
         await consumePendingNotificationIntentIfNeeded()
     }
 
+    private func shouldUseRemoteBackend(for session: AuthSession?) -> Bool {
+        guard let session else { return false }
+        return session.usesRemoteBackend &&
+            remoteOnboardingRepository != nil &&
+            remoteScanRepository != nil &&
+            remoteJourneyRepository != nil
+    }
+
+    private func synchronizeRemoteCacheIfNeeded(for session: AuthSession) async {
+        guard shouldUseRemoteBackend(for: session) else { return }
+
+        do {
+            try await synchronizeRemoteOnboardingIfNeeded(for: session)
+            try await synchronizeRemoteAnalysesIfNeededInternal(for: session)
+            try await synchronizeRemoteJourneyIfNeededInternal(for: session)
+        } catch {
+            authErrorMessage = "Could not sync your cloud data."
+        }
+    }
+
+    private func synchronizeRemoteOnboardingIfNeeded(for session: AuthSession) async throws {
+        guard let remoteOnboardingRepository else { return }
+
+        let remoteProfile = try await remoteOnboardingRepository.fetchProfile()
+        if let remoteProfile {
+            try onboardingRepository.saveOnboarding(
+                userId: session.localUserId,
+                skinTypes: remoteProfile.skinTypes,
+                goal: remoteProfile.goal,
+                routine: remoteProfile.routineLevel
+            )
+            return
+        }
+
+        if let localProfile = try onboardingRepository.profile(userId: session.localUserId) {
+            try await remoteOnboardingRepository.saveProfile(
+                skinTypes: decodedSkinTypesCSV(localProfile.skinTypesCSV),
+                goal: localProfile.goal,
+                routineLevel: localProfile.routine
+            )
+        }
+    }
+
+    private func synchronizeRemoteAnalysesIfNeeded() async {
+        guard let session = currentSession, shouldUseRemoteBackend(for: session) else { return }
+        do {
+            try await synchronizeRemoteAnalysesIfNeededInternal(for: session)
+            try loadRecentAnalyses(for: session.localUserId)
+        } catch {
+            authErrorMessage = "Could not sync recent analyses."
+        }
+    }
+
+    private func synchronizeRemoteAnalysesIfNeededInternal(for session: AuthSession) async throws {
+        guard let remoteScanRepository else { return }
+
+        var remoteScans = try await remoteScanRepository.fetchRecentAnalyses()
+        if remoteScans.isEmpty {
+            let localAnalyses = try analysisRepository.fetchRecentAnalyses(userId: session.localUserId, limit: 500)
+            try await remoteScanRepository.importLocalAnalyses(localAnalyses)
+            remoteScans = try await remoteScanRepository.fetchRecentAnalyses()
+        }
+
+        for scan in remoteScans {
+            try saveAnalysisCache(
+                id: scan.id,
+                userId: session.localUserId,
+                score: scan.score,
+                summary: scan.summary,
+                skinTypeDetected: scan.skinTypeDetected,
+                imageHash: nil,
+                criteria: scan.criteria
+            )
+        }
+    }
+
+    private func synchronizeRemoteJourneyIfNeeded() async {
+        guard let session = currentSession, shouldUseRemoteBackend(for: session) else { return }
+        do {
+            try await synchronizeRemoteJourneyIfNeededInternal(for: session)
+            try loadSkinJourneyLogs(for: session.localUserId)
+        } catch {
+            authErrorMessage = "Could not sync your skin journey."
+        }
+    }
+
+    private func synchronizeRemoteJourneyIfNeededInternal(for session: AuthSession) async throws {
+        guard let remoteJourneyRepository else { return }
+
+        var remoteLogs = try await remoteJourneyRepository.fetchLogs()
+        if remoteLogs.isEmpty {
+            let localLogs = try skinJourneyRepository.fetchLogs(userId: session.localUserId)
+            try await remoteJourneyRepository.importLocalLogs(localLogs)
+            remoteLogs = try await remoteJourneyRepository.fetchLogs()
+        }
+
+        for log in remoteLogs {
+            try skinJourneyRepository.upsertLog(
+                userId: session.localUserId,
+                date: log.dayStartAt,
+                routineStepIDs: log.routineStepIDs,
+                treatmentIDs: log.treatmentIDs,
+                skinStatusIDs: log.skinStatusIDs,
+                note: log.note
+            )
+        }
+    }
+
     private func loadRecentAnalyses(for userId: String) throws {
         recentAnalyses = try analysisRepository.fetchRecentAnalyses(userId: userId, limit: 20)
     }
@@ -649,15 +856,39 @@ public class AppState: ObservableObject {
     private func refreshBillingState() async {
         do {
             let entitlement = try await billingService.currentEntitlement()
-            isProActive = entitlement.isActive
-            subscriptionPlanId = entitlement.productId
-            subscriptionExpiry = entitlement.expirationDate
+            applyBillingEntitlement(entitlement)
         } catch {
+#if DEBUG
+            if FORCE_DEBUG_PRO_ACCESS {
+                isProActive = true
+                subscriptionPlanId = DEBUG_PRO_PLAN_ID
+                subscriptionExpiry = nil
+                billingErrorMessage = nil
+                return
+            }
+#endif
             isProActive = false
             subscriptionPlanId = nil
             subscriptionExpiry = nil
             billingErrorMessage = userFacingBillingError(from: error)
         }
+    }
+
+    private func applyBillingEntitlement(_ entitlement: SubscriptionEntitlement) {
+#if DEBUG
+        if FORCE_DEBUG_PRO_ACCESS {
+            isProActive = true
+            subscriptionPlanId = entitlement.productId ?? DEBUG_PRO_PLAN_ID
+            subscriptionExpiry = entitlement.expirationDate
+            billingErrorMessage = nil
+            return
+        }
+#endif
+
+        isProActive = entitlement.isActive
+        subscriptionPlanId = entitlement.productId
+        subscriptionExpiry = entitlement.expirationDate
+        billingErrorMessage = nil
     }
 
     private func hydrateInstallFreeScanUsageIfNeeded() {
@@ -740,6 +971,30 @@ public class AppState: ObservableObject {
         onboardingDraftSkinTypes = Set(onboardingDraftRepository.skinTypes(for: draft))
         onboardingDraftGoal = draft.goal
         onboardingDraftRoutine = draft.routine
+    }
+
+    private func currentSkinAnalysisUserContext() -> SkinAnalysisUserContext? {
+        if let session = currentSession, let profile = try? onboardingRepository.profile(userId: session.localUserId) {
+            return SkinAnalysisUserContext(
+                skinTypes: decodedSkinTypesCSV(profile.skinTypesCSV),
+                goal: profile.goal,
+                routineLevel: profile.routine
+            )
+        }
+
+        let fallback = SkinAnalysisUserContext(
+            skinTypes: onboardingDraftSkinTypes.sorted(),
+            goal: onboardingDraftGoal,
+            routineLevel: onboardingDraftRoutine
+        )
+        return fallback.isEmpty ? nil : fallback
+    }
+
+    private func decodedSkinTypesCSV(_ value: String) -> [String] {
+        value
+            .components(separatedBy: "||")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     private func buildReengagementContext() -> ReengagementContext? {
