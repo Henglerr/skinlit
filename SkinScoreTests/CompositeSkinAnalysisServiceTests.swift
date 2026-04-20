@@ -1,5 +1,5 @@
 import XCTest
-@testable import SkinScore
+@testable import SkinLit
 
 final class CompositeSkinAnalysisServiceTests: XCTestCase {
     func testDelegatesToRemoteAnalyzer() async throws {

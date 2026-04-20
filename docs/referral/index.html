@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SkinLit Referral</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <div class="page-shell">
+      <section class="hero-card">
+        <div class="eyebrow">Referral Link</div>
+        <h1>Your SkinLit referral is ready.</h1>
+        <p class="lead">
+          Install SkinLit, sign in with Apple or Google, finish onboarding, then enter this code on
+          the referral card inside the app.
+        </p>
+      </section>
+
+      <div class="card stack">
+        <div>
+          <p class="muted">Referral code</p>
+          <p><span class="code" id="referral-code">NO CODE</span></p>
+        </div>
+        <div class="actions">
+          <button class="button" id="copy-code" type="button">Copy Code</button>
+          <a class="button secondary" href="/support">Referral Help</a>
+        </div>
+        <p class="muted" id="copy-status">Codes are case-insensitive. Manual claim is supported for fresh installs.</p>
+      </div>
+
+      <div class="section-card stack">
+        <h2>How claiming works</h2>
+        <p>Referral rewards unlock after the invited user signs in, completes onboarding, and finishes a successful first scan.</p>
+        <p>SkinLit grants 1 free scan for every 2 validated referrals. Referral rewards are separate from subscriptions.</p>
+        <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Use</a></p>
+      </div>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var rawCode = (params.get("code") || "").trim();
+      if (!rawCode && window.location.hash) {
+        rawCode = window.location.hash.replace(/^#/, "").trim();
+      }
+
+      if (!rawCode) {
+        try {
+          rawCode = (window.sessionStorage.getItem("skinlit.referralCode") || "").trim();
+        } catch (error) {
+          rawCode = "";
+        }
+      }
+
+      var normalizedCode = rawCode.toUpperCase();
+      var codeElement = document.getElementById("referral-code");
+      var copyButton = document.getElementById("copy-code");
+      var copyStatus = document.getElementById("copy-status");
+
+      if (normalizedCode) {
+        codeElement.textContent = normalizedCode;
+        document.title = "SkinLit Referral " + normalizedCode;
+        try {
+          window.sessionStorage.setItem("skinlit.referralCode", normalizedCode);
+        } catch (error) {
+          // Ignore storage failures and keep the page usable.
+        }
+      } else {
+        copyButton.disabled = true;
+        copyStatus.textContent = "No referral code was found in this link. Ask your friend to send the invite again.";
+      }
+
+      copyButton.addEventListener("click", async function () {
+        try {
+          await navigator.clipboard.writeText(normalizedCode);
+          copyStatus.textContent = "Referral code copied. Open SkinLit and paste it into the referral section after sign-in.";
+        } catch (error) {
+          copyStatus.textContent = "Copy failed on this browser. Enter the code manually: " + normalizedCode;
+        }
+      });
+    }());
+  </script>
+</body>
+</html>

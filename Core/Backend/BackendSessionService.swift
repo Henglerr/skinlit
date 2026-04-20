@@ -2,11 +2,11 @@ import Foundation
 
 public final class BackendSessionService {
     private let client: ConvexBackendClient
-    private let store: BackendSessionStore
+    private let store: any BackendSessionStoring
 
     public init(
         client: ConvexBackendClient = ConvexBackendClient(),
-        store: BackendSessionStore = BackendSessionStore()
+        store: any BackendSessionStoring = BackendSessionStore()
     ) {
         self.client = client
         self.store = store
@@ -19,6 +19,7 @@ public final class BackendSessionService {
     public func exchangeSession(
         provider: AuthProvider,
         providerToken: String,
+        providerAuthorizationCode: String? = nil,
         providerUserID: String?,
         email: String?,
         displayName: String?
@@ -26,6 +27,7 @@ public final class BackendSessionService {
         let session = try await client.exchangeSession(
             provider: provider,
             providerToken: providerToken,
+            providerAuthorizationCode: providerAuthorizationCode,
             providerUserID: providerUserID,
             email: email,
             displayName: displayName
@@ -54,6 +56,10 @@ public final class BackendSessionService {
 
     public func currentSession() -> BackendSession? {
         store.read()
+    }
+
+    public var hasStoredSession: Bool {
+        store.read() != nil
     }
 
     public func requireCurrentSession() throws -> BackendSession {

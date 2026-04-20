@@ -1,7 +1,7 @@
 import SwiftData
 import UIKit
 import XCTest
-@testable import SkinScore
+@testable import SkinLit
 
 @MainActor
 final class SettingsRepositoryTests: XCTestCase {
@@ -39,6 +39,89 @@ final class SettingsRepositoryTests: XCTestCase {
         XCTAssertEqual(allSettings.first?.lastSignedInProviderRaw, AuthProvider.guest.rawValue)
     }
 
+    func testScanConsentVersionRepromptsWhenVersionChanges() throws {
+        let (repository, _) = try makeRepository()
+
+        try repository.setScanConsentAccepted(version: "consent-v1", acceptedAt: .now)
+
+        XCTAssertTrue(try repository.hasAcceptedScanConsent(version: "consent-v1"))
+        XCTAssertFalse(try repository.hasAcceptedScanConsent(version: "consent-v2"))
+        XCTAssertNotNil(try repository.scanConsentAcceptedAt())
+    }
+
+    func testReferralStateRoundTripsThroughSettings() throws {
+        let (repository, _) = try makeRepository()
+
+        try repository.setPendingReferralCode("GLOW1234")
+        _ = try repository.incrementReferralShareCount()
+        try repository.saveReferralStatus(
+            RemoteReferralStatus(
+                inviteCode: "INVITE42",
+                inviteURLString: "https://skinlit.lat/r/INVITE42",
+                claimedCode: "GLOW1234",
+                validatedReferralCount: 2,
+                pendingReferralCount: 1,
+                rewardCount: 1,
+                updatedAt: .now
+            )
+        )
+
+        let state = try repository.referralState()
+        XCTAssertEqual(state.pendingCode, "GLOW1234")
+        XCTAssertEqual(state.shareCount, 1)
+        XCTAssertEqual(state.validatedReferralCount, 2)
+        XCTAssertEqual(state.rewardCount, 1)
+        XCTAssertEqual(state.claimedCode, "GLOW1234")
+        XCTAssertEqual(state.inviteCode, "INVITE42")
+        XCTAssertEqual(state.inviteURLString, "https://skinlit.lat/r/INVITE42")
+    }
+
+    func testInstallationIDPersistsInKeychainStore() {
+        let service = "unit-test-installation-\(UUID().uuidString)"
+        let store = KeychainStore(service: service)
+        let expectedAccount = "skinlit_installation_id"
+
+        let first = AppConfig.installationID(keychainStore: store)
+        let second = AppConfig.installationID(keychainStore: store)
+
+        addTeardownBlock {
+            store.delete(account: expectedAccount)
+        }
+
+        XCTAssertFalse(first.isEmpty)
+        XCTAssertEqual(first, second)
+        XCTAssertNotNil(UUID(uuidString: first))
+    }
+
+    func testClearCachedReferralStatusAlsoClearsPendingCode() throws {
+        let (repository, _) = try makeRepository()
+
+        try repository.setPendingReferralCode("GLOW1234")
+        _ = try repository.incrementReferralShareCount()
+        try repository.saveReferralStatus(
+            RemoteReferralStatus(
+                inviteCode: "INVITE42",
+                inviteURLString: "https://skinlit.lat/r/INVITE42",
+                claimedCode: "GLOW1234",
+                validatedReferralCount: 2,
+                pendingReferralCount: 1,
+                rewardCount: 1,
+                updatedAt: .now
+            )
+        )
+
+        try repository.clearCachedReferralStatus()
+
+        let state = try repository.referralState()
+        XCTAssertNil(state.pendingCode)
+        XCTAssertEqual(state.shareCount, 0)
+        XCTAssertEqual(state.validatedReferralCount, 0)
+        XCTAssertEqual(state.rewardCount, 0)
+        XCTAssertNil(state.claimedCode)
+        XCTAssertNil(state.inviteCode)
+        XCTAssertNil(state.inviteURLString)
+    }
+
     private func makeRepository() throws -> (SettingsRepository, ModelContext) {
         let schema = Schema([AppLocalSettings.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
@@ -70,7 +153,8 @@ final class ConvexBackendClientTests: XCTestCase {
 
         let client = ConvexBackendClient(
             baseURLString: "https://backend.example",
-            session: session
+            session: session,
+            installationID: "install_123"
         )
 
         let backendSession = try await client.exchangeSession(
@@ -87,6 +171,7 @@ final class ConvexBackendClientTests: XCTestCase {
         let request = try XCTUnwrap(MockURLProtocol.observedRequests.first)
         XCTAssertEqual(request.url?.absoluteString, "https://backend.example/v1/session/exchange")
         XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-SkinLit-Installation-ID"), "install_123")
 
         let json = try requestJSON(request)
         XCTAssertEqual(json["provider"] as? String, "google")
@@ -94,6 +179,42 @@ final class ConvexBackendClientTests: XCTestCase {
         XCTAssertEqual(json["provider_user_id"] as? String, "google-user-1")
         XCTAssertEqual(json["email"] as? String, "skin@example.com")
         XCTAssertEqual(json["display_name"] as? String, "Skin User")
+        XCTAssertEqual(json["installation_id"] as? String, "install_123")
+    }
+
+    func testExchangeSessionIncludesAuthorizationCodeWhenProvided() async throws {
+        let session = makeSession()
+        MockURLProtocol.responseQueue = [
+            .success(
+                statusCode: 200,
+                jsonObject: [
+                    "session_token": "sess_abc",
+                    "user_id": "remote_user_2",
+                    "expires_at": "2026-03-03T12:00:00Z"
+                ]
+            )
+        ]
+
+        let client = ConvexBackendClient(
+            baseURLString: "https://backend.example",
+            session: session,
+            installationID: "install_456"
+        )
+
+        _ = try await client.exchangeSession(
+            provider: .apple,
+            providerToken: "apple-id-token",
+            providerAuthorizationCode: "apple-auth-code",
+            providerUserID: "apple-user-1",
+            email: "skin@example.com",
+            displayName: "Skin User"
+        )
+
+        let request = try XCTUnwrap(MockURLProtocol.observedRequests.first)
+        let json = try requestJSON(request)
+        XCTAssertEqual(json["authorization_code"] as? String, "apple-auth-code")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-SkinLit-Installation-ID"), "install_456")
+        XCTAssertEqual(json["installation_id"] as? String, "install_456")
     }
 
     func testCreateScanJobUsesMultipartUploadAndAuthorization() async throws {
@@ -110,10 +231,11 @@ final class ConvexBackendClientTests: XCTestCase {
 
         let client = ConvexBackendClient(
             baseURLString: "https://backend.example",
-            session: session
+            session: session,
+            installationID: "install_789"
         )
 
-        let jobID = try await client.createScanJob(
+        let response = try await client.createScanJob(
             sessionToken: "sess_123",
             rawImageData: try makeJPEGData(),
             normalizedImageData: try makeJPEGData(),
@@ -125,11 +247,13 @@ final class ConvexBackendClientTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(jobID, "job_123")
+        XCTAssertEqual(response.jobID, "job_123")
+        XCTAssertEqual(response.status, .queued)
 
         let request = try XCTUnwrap(MockURLProtocol.observedRequests.first)
         XCTAssertEqual(request.url?.absoluteString, "https://backend.example/v1/scans")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer sess_123")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-SkinLit-Installation-ID"), "install_789")
 
         let contentType = try XCTUnwrap(request.value(forHTTPHeaderField: "Content-Type"))
         XCTAssertTrue(contentType.contains("multipart/form-data; boundary="))
@@ -141,6 +265,39 @@ final class ConvexBackendClientTests: XCTestCase {
         XCTAssertTrue(body.contains("img_hash_1"))
         XCTAssertTrue(body.contains("name=\"user_context\""))
         XCTAssertTrue(body.contains("\"skin_types\":[\"Combination\",\"Sensitive\"]"))
+    }
+
+    func testCreateScanJobSendsAcceptedQualityReasonsForManualOverride() async throws {
+        let session = makeSession()
+        MockURLProtocol.responseQueue = [
+            .success(
+                statusCode: 200,
+                jsonObject: [
+                    "job_id": "job_override",
+                    "status": "queued"
+                ]
+            )
+        ]
+
+        let client = ConvexBackendClient(
+            baseURLString: "https://backend.example",
+            session: session,
+            installationID: "install_override"
+        )
+
+        _ = try await client.createScanJob(
+            sessionToken: "sess_override",
+            rawImageData: try makeJPEGData(),
+            normalizedImageData: nil,
+            imageHash: "img_hash_override",
+            userContext: nil,
+            ignoredQualityReasons: [.badAngle, .heavyMakeup]
+        )
+
+        let request = try XCTUnwrap(MockURLProtocol.observedRequests.first)
+        let body = String(decoding: try XCTUnwrap(requestBody(from: request)), as: UTF8.self)
+        XCTAssertTrue(body.contains("name=\"ignored_quality_reasons\""))
+        XCTAssertTrue(body.contains("[\"heavy_makeup\",\"bad_angle\"]"))
     }
 
     func testFetchScanDecodesStructuredResult() async throws {
@@ -190,6 +347,167 @@ final class ConvexBackendClientTests: XCTestCase {
         XCTAssertEqual(scan.predictedBand, "2-4")
         XCTAssertEqual(scan.observedConditions.activeInflammation, .moderate)
         XCTAssertEqual(scan.imageQualityStatus, .ok)
+        XCTAssertNil(scan.criterionInsights)
+    }
+
+    func testFetchScanDecodesCriterionInsightsWhenPresent() async throws {
+        let session = makeSession()
+        MockURLProtocol.responseQueue = [
+            .success(
+                statusCode: 200,
+                jsonObject: [
+                    "id": "scan_456",
+                    "score": 7.1,
+                    "summary": "The skin looks hydrated, with mild texture variation around the cheeks. Luminosity is even enough to read clearly, while redness remains limited.",
+                    "skin_type_detected": "Combination",
+                    "criteria": [
+                        "Hydration": 7.4,
+                        "Texture": 6.8,
+                        "Uniformity": 6.7,
+                        "Luminosity": 7.1
+                    ],
+                    "criterion_insights": [
+                        "Hydration": [
+                            "status": "Balanced",
+                            "summary": "Hydration looks mostly comfortable with light dryness around the cheeks.",
+                            "positive_observations": [
+                                "The central face does not show obvious flaking."
+                            ],
+                            "negative_observations": [
+                                "The cheek area may be pulling the hydration score down slightly."
+                            ],
+                            "routine_focus": "Keep a barrier-supporting moisturizer consistent at night."
+                        ],
+                        "Luminosity": [
+                            "status": "Clear",
+                            "summary": "Luminosity appears even across the visible face, with only minor dullness near shadowed areas.",
+                            "positive_observations": [
+                                "The forehead and central cheeks reflect light evenly."
+                            ],
+                            "negative_observations": [
+                                "The lower cheek shadows make glow look slightly muted."
+                            ],
+                            "routine_focus": "Use gentle exfoliation only if the skin is not irritated."
+                        ],
+                        "Texture": [
+                            "status": "Slightly uneven",
+                            "summary": "Texture is generally smooth, but small bumps and pore visibility are noticeable in the cheek area.",
+                            "positive_observations": [
+                                "The forehead looks relatively smooth."
+                            ],
+                            "negative_observations": [
+                                "Visible pores on the cheeks reduce the texture score."
+                            ],
+                            "routine_focus": "Prioritize calming actives before strong resurfacing."
+                        ],
+                        "Uniformity": [
+                            "status": "Mild variation",
+                            "summary": "Tone is mostly consistent, with mild redness variation around the cheeks and nose.",
+                            "positive_observations": [
+                                "No major dark patches are visible."
+                            ],
+                            "negative_observations": [
+                                "Cheek redness creates some unevenness."
+                            ],
+                            "routine_focus": "Focus on daily sunscreen and redness support."
+                        ]
+                    ],
+                    "observed_conditions": [
+                        "active_inflammation": "mild",
+                        "scarring_pitting": "none",
+                        "texture_irregularity": "mild",
+                        "redness_irritation": "mild",
+                        "dryness_flaking": "none"
+                    ],
+                    "predicted_band": "6-8",
+                    "image_quality_status": "ok",
+                    "image_quality_reasons": [],
+                    "analysis_version": "skin-score-v6-category-insights",
+                    "reference_catalog_version": "catalog-v2",
+                    "model": "gpt-5-mini",
+                    "created_at": "2026-03-03T12:00:00Z"
+                ]
+            )
+        ]
+
+        let client = ConvexBackendClient(
+            baseURLString: "https://backend.example",
+            session: session
+        )
+
+        let scan = try await client.fetchScan(sessionToken: "sess_123", scanID: "scan_456")
+        let hydration = try XCTUnwrap(scan.criterionInsights?["Hydration"])
+
+        XCTAssertEqual(scan.criterionInsights?.count, 4)
+        XCTAssertEqual(hydration.status, "Balanced")
+        XCTAssertEqual(hydration.positiveObservations, ["The central face does not show obvious flaking."])
+        XCTAssertEqual(hydration.negativeObservations, ["The cheek area may be pulling the hydration score down slightly."])
+        XCTAssertEqual(hydration.routineFocus, "Keep a barrier-supporting moisturizer consistent at night.")
+
+        let analysisResult = scan.asAnalysisResult
+        XCTAssertEqual(analysisResult.criterionInsights?["Hydration"], hydration)
+    }
+
+    func testFetchScanDecodesComplementaryVerificationMetadata() async throws {
+        let session = makeSession()
+        MockURLProtocol.responseQueue = [
+            .success(
+                statusCode: 200,
+                jsonObject: [
+                    "id": "scan_987",
+                    "score": 7.2,
+                    "summary": "Balanced tone with minor texture",
+                    "skin_type_detected": "Combination",
+                    "criteria": [
+                        "Hydration": 7.1,
+                        "Texture": 7.0,
+                        "Uniformity": 7.3,
+                        "Luminosity": 7.4
+                    ],
+                    "observed_conditions": [
+                        "active_inflammation": "mild",
+                        "scarring_pitting": "none",
+                        "texture_irregularity": "mild",
+                        "redness_irritation": "none",
+                        "dryness_flaking": "none"
+                    ],
+                    "predicted_band": "6-8",
+                    "image_quality_status": "ok",
+                    "image_quality_reasons": [],
+                    "analysis_version": "skin-score-v5-reference-verified-complementary",
+                    "reference_catalog_version": "catalog-v2",
+                    "base_score": 6.6,
+                    "verified_score": 7.2,
+                    "adjustment_delta": 0.6,
+                    "matched_reference_ids": ["ref-018", "ref-019"],
+                    "verification_verdict": "adjust_up",
+                    "adjustment_reason": "The current score was slightly low versus the matched good-skin anchors.",
+                    "model": "gpt-5-mini",
+                    "created_at": "2026-03-03T12:00:00Z"
+                ]
+            )
+        ]
+
+        let client = ConvexBackendClient(
+            baseURLString: "https://backend.example",
+            session: session
+        )
+
+        let scan = try await client.fetchScan(sessionToken: "sess_123", scanID: "scan_987")
+
+        XCTAssertEqual(scan.baseScore, 6.6)
+        XCTAssertEqual(scan.verifiedScore, 7.2)
+        XCTAssertEqual(scan.adjustmentDelta, 0.6)
+        XCTAssertEqual(scan.matchedReferenceIDs ?? [], ["ref-018", "ref-019"])
+        XCTAssertEqual(scan.verificationVerdict, .adjustUp)
+        XCTAssertEqual(scan.adjustmentReason, "The current score was slightly low versus the matched good-skin anchors.")
+
+        let debugMetadata = scan.debugMetadata(source: .remoteFresh)
+        XCTAssertEqual(debugMetadata.baseScore, 6.6)
+        XCTAssertEqual(debugMetadata.finalScore, 7.2)
+        XCTAssertEqual(debugMetadata.adjustmentDelta, 0.6)
+        XCTAssertEqual(debugMetadata.matchedReferenceIDs ?? [], ["ref-018", "ref-019"])
+        XCTAssertEqual(debugMetadata.verificationVerdict, .adjustUp)
     }
 
     func testSkinScoreComputationCapsSevereCasesAggressively() {

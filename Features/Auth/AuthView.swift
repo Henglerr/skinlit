@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthenticationServices
+import GoogleSignInSwift
 
 struct AuthView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -7,6 +8,26 @@ struct AuthView: View {
     @State private var orbRotation: Double = 0
     @State private var orbScale: CGFloat = 1.0
     @State private var contentOpacity: Double = 0
+
+    private var pendingReferralCode: String? {
+        AppConfig.normalizedReferralCode(appState.pendingReferralCode)
+    }
+
+    private var authEyebrow: String {
+        pendingReferralCode == nil ? "Cloud Save Beta" : "Invite Saved"
+    }
+
+    private var authHelperCopy: String {
+        if let pendingReferralCode {
+            return "Your invite code \(pendingReferralCode) is saved on this device. Keep using SkinLit without an account, or sign in with Apple or Google when you are ready to claim it after onboarding."
+        }
+        return "Use SkinLit without an account. Sign in only if you want to save your progress to cloud beta later."
+    }
+
+    private var pendingReferralCopy: String? {
+        guard let pendingReferralCode else { return nil }
+        return "Code \(pendingReferralCode) is ready on this device. Keep exploring SkinLit locally, then sign in to claim it after onboarding."
+    }
     
     var body: some View {
         ZStack {
@@ -69,6 +90,46 @@ struct AuthView: View {
                 
                 // Auth Buttons Area
                 VStack(spacing: 16) {
+                    VStack(spacing: 8) {
+                        Text(authEyebrow)
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(AppTheme.shared.current.colors.accent)
+                            .tracking(1.2)
+
+                        Text(authHelperCopy)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(4)
+                    }
+
+                    if let pendingReferralCopy {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "gift.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.accent)
+                                .padding(.top, 1)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Invite code saved")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                Text(pendingReferralCopy)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                    .lineSpacing(3)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(14)
+                        .background(AppTheme.shared.current.colors.surface.opacity(0.8))
+                        .cornerRadius(18)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(AppTheme.shared.current.colors.accent.opacity(0.14), lineWidth: 1)
+                        )
+                    }
+
                     SignInWithAppleButton(.signIn) { request in
                         request.requestedScopes = [.fullName, .email]
                     } onCompletion: { result in
@@ -82,43 +143,34 @@ struct AuthView: View {
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
                     .disabled(appState.isAuthLoading)
                     
-                    Button(action: {
+                    GoogleSignInButton(
+                        scheme: colorScheme == .dark ? .dark : .light,
+                        style: .wide,
+                        state: appState.isGoogleConfigured && !appState.isAuthLoading ? .normal : .disabled
+                    ) {
                         guard appState.isGoogleConfigured else { return }
                         Task {
                             await appState.signInWithGoogle()
                         }
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "g.circle.fill")
-                                .font(.system(size: 22))
-                                .foregroundColor(googleButtonTextColor)
-                            Text(appState.isGoogleConfigured ? "Continue with Google" : "Google Sign-In Not Configured")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(googleButtonTextColor)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(googleButtonBackgroundColor)
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(googleButtonTextColor.opacity(0.12), lineWidth: 1)
-                        )
                     }
+                    .frame(height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .disabled(!appState.isGoogleConfigured || appState.isAuthLoading)
-                    
-                    Button(action: {
-                        Task {
-                            await appState.continueAsGuest()
+
+                    if appState.allowsGuestAccess {
+                        Button(action: {
+                            Task {
+                                await appState.continueAsGuest()
+                            }
+                        }) {
+                            Text(appState.isGuestSession ? "Keep using locally →" : "Use without account →")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .padding(.top, 12)
+                                .padding(.bottom, 8)
                         }
-                    }) {
-                        Text("Continue without account →")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                            .padding(.top, 12)
-                            .padding(.bottom, 8)
+                        .disabled(appState.isAuthLoading)
                     }
-                    .disabled(appState.isAuthLoading)
 
                     if appState.isAuthLoading {
                         ProgressView()
@@ -128,12 +180,18 @@ struct AuthView: View {
                     }
 
                     if !appState.isGoogleConfigured {
-                        Text("Add Google OAuth client settings to enable Google sign-in.")
+                        Text("Google sign-in is not configured in this build yet.")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.top, 2)
                     }
+
+                    Text("Apple or Google sign-in is optional. Use it only to activate cloud save beta and sync your scans online.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 2)
 
                     if let errorMessage = appState.authErrorMessage {
                         Text(errorMessage)
@@ -165,17 +223,5 @@ struct AuthView: View {
                 }
             }
         }
-    }
-
-    private var googleButtonTextColor: Color {
-        appState.isGoogleConfigured
-            ? AppTheme.shared.current.colors.textPrimary
-            : AppTheme.shared.current.colors.textSecondary
-    }
-
-    private var googleButtonBackgroundColor: Color {
-        appState.isGoogleConfigured
-            ? AppTheme.shared.current.colors.surface
-            : AppTheme.shared.current.colors.surfaceHigh
     }
 }

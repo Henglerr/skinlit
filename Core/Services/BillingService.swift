@@ -59,9 +59,104 @@ public protocol BillingService {
     func currentEntitlement() async throws -> SubscriptionEntitlement
 }
 
+#if DEBUG
+private func debugBillingPackages(for productIDs: [String]) -> [PaywallPackage] {
+    productIDs.compactMap { productID in
+        switch productID {
+        case "com.skinlit.pro.weekly":
+            return PaywallPackage(
+                id: productID,
+                title: "Weekly",
+                priceText: "$4.99",
+                trialDescription: "7-day free trial",
+                badge: nil
+            )
+        case "com.skinlit.pro.monthly":
+            return PaywallPackage(
+                id: productID,
+                title: "Monthly",
+                priceText: "$14.99",
+                trialDescription: "7-day free trial",
+                badge: "MOST POPULAR"
+            )
+        case "com.skinlit.pro.yearly":
+            return PaywallPackage(
+                id: productID,
+                title: "Yearly",
+                priceText: "$49.99",
+                trialDescription: "7-day free trial",
+                badge: "BEST VALUE"
+            )
+        default:
+            return nil
+        }
+    }
+}
+
+@MainActor
+public final class DeveloperFallbackBillingService: BillingService {
+    private let primary: BillingService
+    private let fallback: BillingService
+    private var usesFallbackCatalog = false
+
+    public init(primary: BillingService, fallback: BillingService) {
+        self.primary = primary
+        self.fallback = fallback
+    }
+
+    public func fetchPackages() async throws -> [PaywallPackage] {
+        do {
+            let packages = try await primary.fetchPackages()
+            guard !packages.isEmpty else {
+                usesFallbackCatalog = true
+                return try await fallback.fetchPackages()
+            }
+
+            usesFallbackCatalog = false
+            return packages
+        } catch {
+            usesFallbackCatalog = true
+            return try await fallback.fetchPackages()
+        }
+    }
+
+    public func purchase(_ packageId: String) async throws -> Bool {
+        if usesFallbackCatalog {
+            return try await fallback.purchase(packageId)
+        }
+        return try await primary.purchase(packageId)
+    }
+
+    public func restore() async throws -> Bool {
+        if usesFallbackCatalog {
+            return try await fallback.restore()
+        }
+
+        do {
+            return try await primary.restore()
+        } catch {
+            return try await fallback.restore()
+        }
+    }
+
+    public func currentEntitlement() async throws -> SubscriptionEntitlement {
+        if usesFallbackCatalog {
+            return try await fallback.currentEntitlement()
+        }
+
+        do {
+            return try await primary.currentEntitlement()
+        } catch {
+            return try await fallback.currentEntitlement()
+        }
+    }
+}
+#endif
+
 @MainActor
 public final class StoreKitBillingService: BillingService {
     private let productIDs: [String]
+    private var cachedProductsByID: [String: Product] = [:]
 
     public init(productIDs: [String]) {
         self.productIDs = productIDs
@@ -73,19 +168,31 @@ public final class StoreKitBillingService: BillingService {
             products = try await Product.products(for: productIDs)
         } catch {
 #if DEBUG
-            return debugFallbackPackages()
+            if allowsDebugFallbackPackages {
+                return debugFallbackPackages()
+            }
 #else
-            throw error
+            throw BillingError.productsUnavailable
+#endif
+#if DEBUG
+            throw BillingError.productsUnavailable
 #endif
         }
 
         guard !products.isEmpty else {
 #if DEBUG
-            return debugFallbackPackages()
+            if allowsDebugFallbackPackages {
+                return debugFallbackPackages()
+            }
 #else
             throw BillingError.productsUnavailable
 #endif
+#if DEBUG
+            throw BillingError.productsUnavailable
+#endif
         }
+
+        cachedProductsByID = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
 
         let orderLookup = Dictionary(uniqueKeysWithValues: productIDs.enumerated().map { ($0.element, $0.offset) })
         let sorted = products.sorted { lhs, rhs in
@@ -160,11 +267,24 @@ public final class StoreKitBillingService: BillingService {
     }
 
     private func findProduct(by id: String) async throws -> Product {
+        if let cached = cachedProductsByID[id] {
+            return cached
+        }
+
         let products = try await Product.products(for: [id])
         guard let product = products.first else {
             throw BillingError.productNotFound
         }
+        cachedProductsByID[id] = product
         return product
+    }
+
+    private var allowsDebugFallbackPackages: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+#else
+        false
+#endif
     }
 
     private func verifiedTransaction(from result: VerificationResult<Transaction>) throws -> Transaction {
@@ -221,66 +341,44 @@ public final class StoreKitBillingService: BillingService {
 
 #if DEBUG
     private func debugFallbackPackages() -> [PaywallPackage] {
-        productIDs.compactMap { productID in
-            switch productID {
-            case "com.skinscore.pro.weekly":
-                return PaywallPackage(
-                    id: productID,
-                    title: "Weekly",
-                    priceText: "$4.99",
-                    trialDescription: "7-day free trial",
-                    badge: nil
-                )
-            case "com.skinscore.pro.yearly":
-                return PaywallPackage(
-                    id: productID,
-                    title: "Yearly",
-                    priceText: "$48.99",
-                    trialDescription: "7-day free trial",
-                    badge: "BEST VALUE"
-                )
-            default:
-                return nil
-            }
-        }
+        debugBillingPackages(for: productIDs)
     }
 #endif
 }
 
 #if DEBUG
+@MainActor
 public final class MockBillingService: BillingService {
-    public init() {}
+    private let packages: [PaywallPackage]
+    private var activeProductId: String?
+
+    public init(productIDs: [String]? = nil) {
+        self.packages = debugBillingPackages(for: productIDs ?? AppConfig.subscriptionProductIds)
+    }
 
     public func fetchPackages() async throws -> [PaywallPackage] {
-        [
-            PaywallPackage(
-                id: "com.skinscore.pro.weekly",
-                title: "Weekly",
-                priceText: "$4.99",
-                trialDescription: "7-day free trial",
-                badge: nil
-            ),
-            PaywallPackage(
-                id: "com.skinscore.pro.yearly",
-                title: "Yearly",
-                priceText: "$48.99",
-                trialDescription: "7-day free trial",
-                badge: "BEST VALUE"
-            )
-        ]
+        packages
     }
 
     public func purchase(_ packageId: String) async throws -> Bool {
+        guard packages.contains(where: { $0.id == packageId }) else {
+            throw BillingError.productNotFound
+        }
         try await Task.sleep(nanoseconds: 300_000_000)
+        activeProductId = packageId
         return true
     }
 
     public func restore() async throws -> Bool {
-        true
+        activeProductId != nil
     }
 
     public func currentEntitlement() async throws -> SubscriptionEntitlement {
-        SubscriptionEntitlement(isActive: false, productId: nil, expirationDate: nil)
+        SubscriptionEntitlement(
+            isActive: activeProductId != nil,
+            productId: activeProductId,
+            expirationDate: nil
+        )
     }
 }
 #endif

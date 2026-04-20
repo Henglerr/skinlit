@@ -9,7 +9,7 @@ public final class KeychainStore {
 
     private let service: String
 
-    public init(service: String = Bundle.main.bundleIdentifier ?? "com.skinscore.SkinScore") {
+    public init(service: String = Bundle.main.bundleIdentifier ?? "com.skinlit.SkinLit") {
         self.service = service
     }
 
@@ -28,8 +28,17 @@ public final class KeychainStore {
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         guard status == errSecSuccess else {
+#if targetEnvironment(simulator)
+            UserDefaults.standard.set(data, forKey: fallbackKey(for: account))
+            return
+#else
             throw KeychainError.operationFailed(status)
+#endif
         }
+
+#if targetEnvironment(simulator)
+        UserDefaults.standard.removeObject(forKey: fallbackKey(for: account))
+#endif
     }
 
     public func read(account: String) -> Data? {
@@ -44,7 +53,11 @@ public final class KeychainStore {
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess else {
+#if targetEnvironment(simulator)
+            return UserDefaults.standard.data(forKey: fallbackKey(for: account))
+#else
             return nil
+#endif
         }
 
         return item as? Data
@@ -57,5 +70,12 @@ public final class KeychainStore {
             kSecAttrAccount as String: account
         ]
         SecItemDelete(query as CFDictionary)
+#if targetEnvironment(simulator)
+        UserDefaults.standard.removeObject(forKey: fallbackKey(for: account))
+#endif
+    }
+
+    private func fallbackKey(for account: String) -> String {
+        "sim-keychain-fallback.\(service).\(account)"
     }
 }

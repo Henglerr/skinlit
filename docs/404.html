@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SkinLit Link</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <div class="page-shell">
+      <section class="hero-card">
+        <div class="eyebrow">Link Redirect</div>
+        <h1>Opening your SkinLit link.</h1>
+        <p class="lead">If automatic redirect does not happen, use the action below.</p>
+      </section>
+
+      <div class="card stack">
+        <p id="message">Checking this link now.</p>
+        <div class="actions">
+          <a class="button" id="continue-link" href="/">Continue</a>
+          <a class="button secondary" href="/support">Need Help?</a>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var path = window.location.pathname || "";
+      var match = path.match(/^\/r\/([^/?#]+)/);
+      var continueLink = document.getElementById("continue-link");
+      var message = document.getElementById("message");
+
+      if (!match) {
+        message.textContent = "This page could not be found. You can return to SkinLit legal and support pages below.";
+        continueLink.textContent = "Go to SkinLit Home";
+        continueLink.href = "/";
+        return;
+      }
+
+      var code = decodeURIComponent(match[1]).trim();
+      if (!code) {
+        message.textContent = "This referral link is missing a code. Open the latest invite again or contact support.";
+        continueLink.textContent = "Open Support";
+        continueLink.href = "/support";
+        return;
+      }
+
+      try {
+        window.sessionStorage.setItem("skinlit.referralCode", code);
+      } catch (error) {
+        // Ignore storage failures and continue with the query-string fallback.
+      }
+
+      var destination = "/referral/?code=" + encodeURIComponent(code);
+      message.textContent = "This referral code will be available on the next page if SkinLit is not installed on this device.";
+      continueLink.href = destination;
+      continueLink.textContent = "Open Referral Page";
+      window.location.replace(destination);
+    }());
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import XCTest
-@testable import SkinScore
+@testable import SkinLit
 
 final class ReengagementPlannerTests: XCTestCase {
     func testOnboardingIncompleteProducesExpectedNotifications() {
@@ -47,7 +47,7 @@ final class ReengagementPlannerTests: XCTestCase {
 
         XCTAssertEqual(planner.stage(for: context), .noScansYet)
         XCTAssertEqual(notifications.count, 3)
-        XCTAssertEqual(notifications[0].body, "Your profile is ready. Open SkinScore to see your baseline.")
+        XCTAssertEqual(notifications[0].body, "Your profile is ready. Open SkinLit to see your baseline.")
         XCTAssertEqual(notifications[1].body, "Start tracking your skin with a quick first scan.")
         XCTAssertEqual(notifications[2].body, "One scan is enough to begin your skin progress history.")
         XCTAssertEqual(notifications.map(\.openIntent), [.openFirstScan, .openFirstScan, .openFirstScan])

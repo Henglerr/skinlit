@@ -1,27 +1,33 @@
 import Foundation
 
 public final class ConvexBackendClient {
+    private static let installationIDHeaderField = "X-SkinLit-Installation-ID"
+
     private let baseURLString: String
     private let session: URLSession
+    private let installationID: String
 
     public var isConfigured: Bool {
         let trimmed = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         return !trimmed.isEmpty && !trimmed.contains("$(")
     }
 
-    public init(bundle: Bundle = .main, session: URLSession = .shared) {
+    public init(bundle: Bundle = .main, session: URLSession = .shared, installationID: String? = nil) {
         self.baseURLString = AppConfig.backendBaseURL(bundle: bundle)
         self.session = session
+        self.installationID = installationID ?? AppConfig.installationID()
     }
 
-    init(baseURLString: String, session: URLSession = .shared) {
+    init(baseURLString: String, session: URLSession = .shared, installationID: String? = nil) {
         self.baseURLString = baseURLString
         self.session = session
+        self.installationID = installationID ?? AppConfig.installationID()
     }
 
     public func exchangeSession(
         provider: AuthProvider,
         providerToken: String,
+        providerAuthorizationCode: String? = nil,
         providerUserID: String?,
         email: String?,
         displayName: String?
@@ -30,8 +36,12 @@ public final class ConvexBackendClient {
             "provider": provider.rawValue,
             "provider_token": providerToken,
             "device_label": AppConfig.deviceLabel(),
+            "installation_id": installationID,
             "app_version": AppConfig.appVersion()
         ]
+        if let providerAuthorizationCode {
+            payload["authorization_code"] = providerAuthorizationCode
+        }
         if let providerUserID {
             payload["provider_user_id"] = providerUserID
         }
@@ -99,8 +109,9 @@ public final class ConvexBackendClient {
         rawImageData: Data,
         normalizedImageData: Data?,
         imageHash: String?,
-        userContext: SkinAnalysisUserContext?
-    ) async throws -> String {
+        userContext: SkinAnalysisUserContext?,
+        ignoredQualityReasons: Set<SkinImageQualityReason> = []
+    ) async throws -> RemoteCreateScanJobResponse {
         let boundary = "Boundary-\(UUID().uuidString)"
         var body = Data()
 
@@ -115,6 +126,19 @@ public final class ConvexBackendClient {
             let value = String(data: payload, encoding: .utf8)
             appendMultipartField(
                 name: "user_context",
+                value: value,
+                boundary: boundary,
+                body: &body
+            )
+        }
+        if !ignoredQualityReasons.isEmpty {
+            let orderedReasons = SkinImageQualityReason.allCases
+                .filter { ignoredQualityReasons.contains($0) }
+                .map(\.rawValue)
+            let payload = try JSONEncoder.backendEncoder.encode(orderedReasons)
+            let value = String(data: payload, encoding: .utf8)
+            appendMultipartField(
+                name: "ignored_quality_reasons",
                 value: value,
                 boundary: boundary,
                 body: &body
@@ -140,19 +164,14 @@ public final class ConvexBackendClient {
         }
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
-        struct CreateJobResponse: Decodable {
-            let jobID: String
-            enum CodingKeys: String, CodingKey { case jobID = "job_id" }
-        }
-
-        let response: CreateJobResponse = try await performRequest(
+        let response: RemoteCreateScanJobResponse = try await performRequest(
             path: "/v1/scans",
             method: "POST",
             contentType: "multipart/form-data; boundary=\(boundary)",
             body: body,
             sessionToken: sessionToken
         )
-        return response.jobID
+        return response
     }
 
     public func fetchScanJob(sessionToken: String, jobID: String) async throws -> RemoteScanJob {
@@ -208,6 +227,17 @@ public final class ConvexBackendClient {
             if let inputImageHash = scan.inputImageHash {
                 payload["inputImageHash"] = inputImageHash
             }
+            if let criterionInsights = scan.criterionInsights {
+                payload["criterionInsights"] = criterionInsights.mapValues { insight in
+                    [
+                        "status": insight.status,
+                        "summary": insight.summary,
+                        "positive_observations": insight.positiveObservations,
+                        "negative_observations": insight.negativeObservations,
+                        "routine_focus": insight.routineFocus
+                    ]
+                }
+            }
             return payload
         }
         let _: [String: Bool] = try await performJSONRequest(
@@ -221,6 +251,42 @@ public final class ConvexBackendClient {
     public func fetchJourney(sessionToken: String) async throws -> [RemoteJourneyLog] {
         try await performJSONRequest(
             path: "/v1/journey",
+            method: "GET",
+            bodyObject: nil,
+            sessionToken: sessionToken
+        )
+    }
+
+    public func fetchReferralStatus(sessionToken: String) async throws -> RemoteReferralStatus {
+        try await performJSONRequest(
+            path: "/v1/referrals",
+            method: "GET",
+            bodyObject: nil,
+            sessionToken: sessionToken
+        )
+    }
+
+    public func createReferralInvite(sessionToken: String) async throws -> RemoteReferralStatus {
+        try await performJSONRequest(
+            path: "/v1/referrals/invite",
+            method: "POST",
+            bodyObject: nil,
+            sessionToken: sessionToken
+        )
+    }
+
+    public func claimReferralCode(sessionToken: String, code: String) async throws -> RemoteReferralClaimResponse {
+        try await performJSONRequest(
+            path: "/v1/referrals/claim",
+            method: "POST",
+            bodyObject: ["code": code],
+            sessionToken: sessionToken
+        )
+    }
+
+    public func fetchReferralRewards(sessionToken: String) async throws -> [RemoteReferralReward] {
+        try await performJSONRequest(
+            path: "/v1/referrals/rewards",
             method: "GET",
             bodyObject: nil,
             sessionToken: sessionToken
@@ -367,6 +433,7 @@ public final class ConvexBackendClient {
         if let sessionToken {
             request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "Authorization")
         }
+        request.setValue(installationID, forHTTPHeaderField: Self.installationIDHeaderField)
         request.httpBody = body
         return request
     }

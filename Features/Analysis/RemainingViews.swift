@@ -8,20 +8,22 @@ struct LoadingView: View {
     @State private var phraseOpacity: Double = 1
     @State private var ringRotation: Double = 0
     @State private var ringScale: CGFloat = 1.0
-    @State private var hasStartedAnalysis = false
     @State private var isAnalyzing = false
+    @State private var analysisTask: Task<Void, Never>?
 
     let phrases = [
         "Analyzing hydration levels...",
         "Checking pores and texture...",
         "Measuring luminosity...",
         "Evaluating uniformity...",
-        "Calculating your Skin Score..."
+            "Calculating your SkinLit score..."
     ]
 
     let timer = Timer.publish(every: 1.8, on: .main, in: .common).autoconnect()
 
     private func popToLatestScanPrep() {
+        appState.discardPendingScanImageData()
+        appState.clearScanErrorMessage()
         if let index = appState.currentRoute.lastIndex(where: {
             if case .scanPrep = $0 { return true }
             return false
@@ -29,16 +31,21 @@ struct LoadingView: View {
             appState.currentRoute = Array(appState.currentRoute.prefix(index + 1))
             return
         }
-        appState.presentAsRoot(.upload)
+        if appState.ensureAuthenticatedScanAvailability(redirectToAuth: true) {
+            appState.presentAsRoot(.upload)
+        }
     }
 
     private func startAnalysis() {
         guard !isAnalyzing else { return }
+        currentPhraseIndex = 0
+        phraseOpacity = 1
         isAnalyzing = true
 
-        Task {
+        analysisTask = Task {
             let startedAt = Date()
             let analysisId = await appState.processPendingAnalysis()
+            guard !Task.isCancelled else { return }
             let elapsed = Date().timeIntervalSince(startedAt)
             let minimumLoadingTime = 2.2
 
@@ -46,15 +53,49 @@ struct LoadingView: View {
                 let remaining = minimumLoadingTime - elapsed
                 try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
             }
+            guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 isAnalyzing = false
+                analysisTask = nil
 
                 if let analysisId {
                     appState.openAnalysisInHomeDeepDive(analysisId)
                 }
             }
         }
+    }
+
+    private var hasStructuredIssueReasons: Bool {
+        !appState.scanErrorReasons.isEmpty
+    }
+
+    private var structuredRecoveryLabel: String {
+        if let latestScanPrep = appState.currentRoute.last(where: {
+            if case .scanPrep = $0 { return true }
+            return false
+        }), case .scanPrep(let useCamera) = latestScanPrep {
+            return useCamera ? "Retake Photo" : "Choose Another Photo"
+        }
+        return "Choose Another Photo"
+    }
+
+    private var primaryRecoveryLabel: String {
+        hasStructuredIssueReasons ? structuredRecoveryLabel : "Try Again"
+    }
+
+    private var showsQualityOverrideAction: Bool {
+        hasStructuredIssueReasons && appState.canForceAnalyzeCurrentScan
+    }
+
+    private func primaryRecoveryAction() {
+        if hasStructuredIssueReasons {
+            popToLatestScanPrep()
+            return
+        }
+
+        appState.clearScanErrorMessage()
+        startAnalysis()
     }
 
     var body: some View {
@@ -119,20 +160,76 @@ struct LoadingView: View {
 
                 if !isAnalyzing, let errorMessage = appState.scanErrorMessage {
                     VStack(spacing: 14) {
-                        Text(errorMessage)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                            .multilineTextAlignment(.center)
+                        VStack(spacing: 14) {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(AppTheme.shared.current.colors.warning.opacity(0.18))
+                                        .frame(width: 38, height: 38)
+                                    Image(systemName: hasStructuredIssueReasons ? "sparkles.rectangle.stack.fill" : "exclamationmark.triangle.fill")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(AppTheme.shared.current.colors.warning)
+                                }
 
-                        PrimaryButton("Try Again") {
-                            appState.scanErrorMessage = nil
-                            startAnalysis()
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(hasStructuredIssueReasons ? "Retake Needed" : "Scan Paused")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                    Text(errorMessage)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                Spacer(minLength: 0)
+                            }
+
+                            if hasStructuredIssueReasons {
+                                VStack(spacing: 10) {
+                                    ForEach(appState.scanErrorReasons, id: \.self) { reason in
+                                        ScanIssueChip(reason: reason)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(16)
+                        .background(AppTheme.shared.current.colors.surface)
+                        .glassmorphism(cornerRadius: 24, borderOpacity: 0.16)
+
+                        PrimaryButton(primaryRecoveryLabel) {
+                            primaryRecoveryAction()
                         }
 
-                        Button(action: popToLatestScanPrep) {
-                            Text("Choose Another Photo")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                        if showsQualityOverrideAction {
+                            Button(action: {
+                                guard appState.acceptCurrentScanQualityWarningForManualAnalysis() else { return }
+                                startAnalysis()
+                            }) {
+                                Text("Analyze Anyway")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(AppTheme.shared.current.colors.surfaceHigh)
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(AppTheme.shared.current.colors.accent.opacity(0.24), lineWidth: 1)
+                                    )
+                            }
+
+                            Text("We'll save this scan as lower confidence and flag the accepted photo quality warnings.")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+
+                        if !hasStructuredIssueReasons {
+                            Button(action: popToLatestScanPrep) {
+                                Text("Choose Another Photo")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                            }
                         }
                     }
                     .padding(.horizontal, 24)
@@ -142,12 +239,123 @@ struct LoadingView: View {
             }
             .padding(.horizontal, 40)
             .onAppear {
-                guard !hasStartedAnalysis else { return }
-                hasStartedAnalysis = true
                 startAnalysis()
+            }
+            .onDisappear {
+                analysisTask?.cancel()
+                analysisTask = nil
+                isAnalyzing = false
             }
         }
         .navigationBarHidden(true)
+    }
+}
+
+private struct ScanIssueChip: View {
+    let reason: SkinImageQualityReason
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(AppTheme.shared.current.colors.accentSoft)
+                    .frame(width: 34, height: 34)
+                Image(systemName: reason.symbolName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppTheme.shared.current.colors.accent)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(reason.shortTitle)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(reason.recoveryHint)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.shared.current.colors.surfaceHigh.opacity(0.55))
+        .glassmorphism(cornerRadius: 18, borderOpacity: 0.10)
+    }
+}
+
+private extension SkinImageQualityReason {
+    var symbolName: String {
+        switch self {
+        case .noFace:
+            return "person.crop.circle.badge.exclamationmark"
+        case .lowLight:
+            return "moon.stars.fill"
+        case .overexposed:
+            return "sun.max.fill"
+        case .blur:
+            return "camera.aperture"
+        case .heavyFilter:
+            return "wand.and.stars"
+        case .heavyMakeup:
+            return "paintbrush.fill"
+        case .occlusion:
+            return "eye.slash.fill"
+        case .badAngle:
+            return "rotate.right.fill"
+        case .multipleFaces:
+            return "person.2.fill"
+        }
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .noFace:
+            return "Face Not Found"
+        case .lowLight:
+            return "Low Light"
+        case .overexposed:
+            return "Too Bright"
+        case .blur:
+            return "Blur"
+        case .heavyFilter:
+            return "Heavy Filter"
+        case .heavyMakeup:
+            return "Heavy Makeup"
+        case .occlusion:
+            return "Covered Face"
+        case .badAngle:
+            return "Bad Angle"
+        case .multipleFaces:
+            return "Multiple Faces"
+        }
+    }
+
+    var recoveryHint: String {
+        switch self {
+        case .noFace:
+            return "Keep your full face centered and visible"
+        case .lowLight:
+            return "Move into softer daylight"
+        case .overexposed:
+            return "Avoid harsh direct light"
+        case .blur:
+            return "Hold still and refocus"
+        case .heavyFilter:
+            return "Use the unfiltered photo"
+        case .heavyMakeup:
+            return "Use a more natural face"
+        case .occlusion:
+            return "Keep the full face visible"
+        case .badAngle:
+            return "Face the camera straight on"
+        case .multipleFaces:
+            return "Keep only one face in frame"
+        }
     }
 }
 
@@ -160,17 +368,18 @@ struct PaywallView: View {
     @State private var selectedPlanId: String? = nil
     @State private var showShareSheet = false
 
-    private let features = [
-        "Detailed score per criterion",
-        "Full cosmetic AI skin analysis",
-        "Weekly progress history",
-        "Personalized routine suggestions",
-        "Unlimited analyses"
-    ]
+    private let features = AppConfig.paywallFeatures
+
+    private var preferredDefaultPlanId: String? {
+        if let yearly = appState.paywallPackages.first(where: { $0.id.contains(".yearly") }) {
+            return yearly.id
+        }
+        return appState.paywallPackages.first?.id
+    }
 
     private var selectedPlan: PaywallPackage? {
-        guard let selectedPlanId else { return appState.paywallPackages.first }
-        return appState.paywallPackages.first(where: { $0.id == selectedPlanId }) ?? appState.paywallPackages.first
+        guard let selectedPlanId else { return appState.paywallPackages.first(where: { $0.id == preferredDefaultPlanId }) ?? appState.paywallPackages.first }
+        return appState.paywallPackages.first(where: { $0.id == selectedPlanId }) ?? appState.paywallPackages.first(where: { $0.id == preferredDefaultPlanId }) ?? appState.paywallPackages.first
     }
 
     var body: some View {
@@ -205,7 +414,7 @@ struct PaywallView: View {
                                 .font(.system(size: 44, weight: .thin))
                                 .foregroundStyle(AppTheme.shared.current.colors.primaryGradient)
 
-                            Text("Unlock Skin Score PRO")
+                            Text("Unlock SkinLit PRO")
                                 .font(.system(size: 30, weight: .heavy))
                                 .foregroundColor(AppTheme.shared.current.colors.textPrimary)
 
@@ -236,13 +445,34 @@ struct PaywallView: View {
                                 .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.06), lineWidth: 1)
                         )
 
-                        if appState.paywallPackages.isEmpty {
+                        if appState.isPaywallPackagesLoading && appState.paywallPackages.isEmpty {
                             VStack(spacing: 10) {
                                 ProgressView()
                                     .progressViewStyle(.circular)
                                 Text("Loading subscription options...")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            }
+                            .padding(.vertical, 20)
+                        } else if appState.paywallPackages.isEmpty {
+                            VStack(spacing: 12) {
+                                Text("Subscription options are unavailable right now.")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                    .multilineTextAlignment(.center)
+
+                                Button {
+                                    Task {
+                                        await appState.refreshPaywallData()
+                                        if selectedPlanId == nil {
+                                            selectedPlanId = preferredDefaultPlanId
+                                        }
+                                    }
+                                } label: {
+                                    Text("Try Again")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(AppTheme.shared.current.colors.accent)
+                                }
                             }
                             .padding(.vertical, 20)
                         } else {
@@ -302,7 +532,7 @@ struct PaywallView: View {
                             Button {
                                 showShareSheet = true
                             } label: {
-                                Text("Share Skin Score")
+                                Text("Share SkinLit")
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                                     .underline()
@@ -324,7 +554,7 @@ struct PaywallView: View {
                             .foregroundColor(AppTheme.shared.current.colors.accent)
                         }
 
-                        Text("SkinScore provides cosmetic wellness insights and is not a medical diagnosis.")
+                        Text("SkinLit provides cosmetic wellness insights and is not a medical diagnosis.")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                             .multilineTextAlignment(.center)
@@ -337,25 +567,35 @@ struct PaywallView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showShareSheet) {
-            ShareSheet(items: AppConfig.shareSheetItems()) { activityType in
-                appState.recordReferralShareAttempt(activityType: activityType)
+            if AppConfig.isReferralsEnabled() {
+                ShareSheet(items: appState.referralShareItems) { activityType in
+                    appState.recordReferralShareAttempt(activityType: activityType)
+                }
+            } else {
+                ShareSheet(items: appState.genericShareItems)
             }
         }
         .onAppear {
             if selectedPlanId == nil {
-                selectedPlanId = appState.paywallPackages.first?.id
+                selectedPlanId = preferredDefaultPlanId
             }
             Task {
                 await appState.refreshPaywallData()
                 if selectedPlanId == nil {
-                    selectedPlanId = appState.paywallPackages.first?.id
+                    selectedPlanId = preferredDefaultPlanId
                 }
+            }
+        }
+        .onChange(of: appState.paywallPackages) { _, newValue in
+            guard !newValue.isEmpty else { return }
+            if selectedPlanId == nil || !newValue.contains(where: { $0.id == selectedPlanId }) {
+                selectedPlanId = preferredDefaultPlanId
             }
         }
     }
 
     private var resolvedSelectedPlanId: String {
-        selectedPlanId ?? appState.paywallPackages.first?.id ?? ""
+        selectedPlanId ?? preferredDefaultPlanId ?? ""
     }
 
     private var callToActionTitle: String {

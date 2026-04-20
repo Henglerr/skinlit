@@ -37,6 +37,38 @@ struct RootView: View {
                 // Rebuild all views when the theme changes so AppTheme.shared.current re-evaluates
                 .id(appState.appTheme)
                 .preferredColorScheme(appState.appTheme == "purple" ? .dark : nil)
+                .overlay(alignment: .top) {
+                    if let warningMessage = appState.launchWarningMessage {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.warning)
+
+                            Text(warningMessage)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Spacer(minLength: 0)
+
+                            Button {
+                                appState.dismissLaunchWarning()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(AppTheme.shared.current.colors.surface)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: 8)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                    }
+                }
             }
         }
     }

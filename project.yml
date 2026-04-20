@@ -1,6 +1,6 @@
-name: SkinScore
+name: SkinLit
 options:
-  bundleIdPrefix: com.skinscore
+  bundleIdPrefix: com.skinlit
   deploymentTarget:
     iOS: 17.0
 packages:
@@ -12,24 +12,101 @@ targets:
     type: application
     platform: iOS
     sources: [App, Config, Core, Features, DesignSystem, Resources]
+    preBuildScripts:
+      - name: Validate Backend Endpoint
+        inputFiles:
+          - $(SRCROOT)/Resources/SkinScore.entitlements
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/validate_backend_endpoint.stamp
+        script: |
+          set -eu
+
+          trim() {
+            printf '%s' "${1:-}" | tr -d '[:space:]'
+          }
+
+          fail() {
+            echo "error: $1"
+            exit 1
+          }
+
+          validate_required_string() {
+            key="$1"
+            value="$(trim "${2:-}")"
+            if [ -z "$value" ] || printf '%s' "$value" | grep -Fq '$('; then
+              fail "$key is required for this build."
+            fi
+          }
+
+          validate_url() {
+            key="$1"
+            value="$(trim "${2:-}")"
+            validate_required_string "$key" "$value"
+            case "$value" in
+              http://*|https://*) ;;
+              *) fail "$key must start with http:// or https://. Got '$value'." ;;
+            esac
+
+            host="${value#*://}"
+            host="${host%%/*}"
+            case "$host" in
+              *.*) ;;
+              *) fail "$key must include a valid host. Got '$value'." ;;
+            esac
+          }
+
+          configuration="${CONFIGURATION:-Debug}"
+          endpoint="$(trim "${SKIN_ANALYSIS_API_ENDPOINT:-}")"
+          validate_url "SKIN_ANALYSIS_API_ENDPOINT" "$endpoint"
+
+          if [ "$configuration" != "Release" ]; then
+            exit 0
+          fi
+
+          validate_required_string "GOOGLE_CLIENT_ID" "${GOOGLE_CLIENT_ID:-}"
+          validate_required_string "GOOGLE_REVERSED_CLIENT_ID" "${GOOGLE_REVERSED_CLIENT_ID:-}"
+          validate_url "APP_SHARE_URL" "${APP_SHARE_URL:-}"
+
+          share_url="$(trim "${APP_SHARE_URL:-}")"
+          share_host="${share_url#*://}"
+          share_host="${share_host%%/*}"
+          if [ "$share_host" != "skinlit.lat" ]; then
+            fail "APP_SHARE_URL must use https://skinlit.lat for launch referrals. Got '$share_url'."
+          fi
+
+          entitlements_file="${SCRIPT_INPUT_FILE_0:-${SRCROOT}/Resources/SkinScore.entitlements}"
+          if ! grep -Fq '<string>applinks:skinlit.lat</string>' "$entitlements_file"; then
+            fail "Resources/SkinScore.entitlements must include applinks:skinlit.lat."
+          fi
+
+          mkdir -p "${DERIVED_FILE_DIR}"
+          touch "${SCRIPT_OUTPUT_FILE_0}"
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig
     dependencies:
       - package: GoogleSignIn
+      - package: GoogleSignIn
+        product: GoogleSignInSwift
     settings:
       base:
         CODE_SIGN_ENTITLEMENTS: Resources/SkinScore.entitlements
+        PRODUCT_NAME: SkinLit
         TARGETED_DEVICE_FAMILY: 1
     info:
       path: Resources/Info.plist
       properties:
+        CFBundleDisplayName: SkinLit
         UILaunchStoryboardName: LaunchScreen
         GIDClientID: $(GOOGLE_CLIENT_ID)
         SkinAnalysisAPIEndpoint: $(SKIN_ANALYSIS_API_ENDPOINT)
         AppShareURL: $(APP_SHARE_URL)
-        NSCameraUsageDescription: "SkinScore uses the camera to capture a selfie for cloud-based cosmetic skin analysis."
-        NSPhotoLibraryUsageDescription: "SkinScore lets you choose a photo for cloud-based cosmetic skin analysis."
+        AppMode: $(APP_MODE)
+        DeveloperModeEnabled: $(DEVELOPER_MODE)
+        UnlimitedScansMode: $(UNLIMITED_SCANS_MODE)
+        ReferralsEnabled: $(REFERRALS_ENABLED)
+        NSCameraUsageDescription: "SkinLit uses the camera to capture a selfie for cosmetic skin analysis. If you activate Cloud Save Beta, your scan history can also sync online."
+        NSPhotoLibraryUsageDescription: "SkinLit lets you choose a photo for cosmetic skin analysis. If you activate Cloud Save Beta, your scan history can also sync online."
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLSchemes:

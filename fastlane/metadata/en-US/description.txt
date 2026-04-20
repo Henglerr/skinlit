@@ -1,0 +1,13 @@
+SkinLit gives you cosmetic skin-scoring feedback from a selfie and helps you track progress over time.
+
+What you can do in SkinLit:
+- Capture or choose a clear selfie for cosmetic analysis
+- See your overall score and criterion breakdowns
+- Compare scans over time and follow progress
+- Unlock deeper analysis, routine ideas, and history with SkinLit Pro
+
+SkinLit is designed for cosmetic wellness insights only. It is not a medical diagnosis tool and does not provide treatment advice.
+
+You can start locally without creating an account. Sign in with Apple or Google is optional and is used for Cloud Save Beta and referral features.
+
+SkinLit Pro is an auto-renewing subscription managed by Apple. Purchases can be restored inside the app, and subscriptions can be managed or canceled from your App Store account settings.

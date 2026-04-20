@@ -1,0 +1,13 @@
+O SkinLit ajuda voce a acompanhar sua pele com analise cosmetica baseada em selfie.
+
+Com o SkinLit, voce pode:
+- enviar uma selfie para analise cosmetica em nuvem
+- receber um score da pele com criterios detalhados
+- acompanhar historico e progresso ao longo do tempo
+- compartilhar convites de indicacao e desbloquear scans gratis com indicacoes validas
+- assinar o Pro quando seus scans gratis acabarem
+
+Importante:
+SkinLit e um app de autocuidado cosmetico. Ele nao fornece diagnostico medico, tratamento, aconselhamento clinico ou deteccao de doencas.
+
+Para melhores resultados, use uma selfie bem iluminada, com o rosto visivel e sem obstrucoes.

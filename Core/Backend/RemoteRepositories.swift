@@ -28,9 +28,16 @@ public final class RemoteOnboardingRepository {
     }
 }
 
-public final class RemoteScanRepository: RemoteScanAnalyzing {
+public final class RemoteScanRepository: RemoteScanAnalyzing, SkinAnalysisQualityOverrideService {
+    private static let scanJobTimeoutSeconds: TimeInterval = 180
+    private static let scanJobPollIntervalNanoseconds: UInt64 = 1_000_000_000
+
     private let client: ConvexBackendClient
     private let sessionService: BackendSessionService
+
+    public var isConfigured: Bool {
+        client.isConfigured
+    }
 
     public init(
         client: ConvexBackendClient = ConvexBackendClient(),
@@ -45,23 +52,64 @@ public final class RemoteScanRepository: RemoteScanAnalyzing {
         imageHash: String?,
         userContext: SkinAnalysisUserContext?
     ) async throws -> SkinAnalysisOutcome {
+        try await analyze(
+            imageData: imageData,
+            imageHash: imageHash,
+            userContext: userContext,
+            ignoredQualityReasons: []
+        )
+    }
+
+    public func analyze(
+        imageData: Data,
+        imageHash: String?,
+        userContext: SkinAnalysisUserContext?,
+        ignoredQualityReasons: Set<SkinImageQualityReason>
+    ) async throws -> SkinAnalysisOutcome {
         let session = try sessionService.requireCurrentSession()
         let normalizedImageData = try FaceImageProcessor.normalizedVariant(from: imageData)
-        let jobID = try await client.createScanJob(
+        let createdJob = try await client.createScanJob(
             sessionToken: session.sessionToken,
             rawImageData: imageData,
             normalizedImageData: normalizedImageData,
             imageHash: imageHash,
-            userContext: userContext
+            userContext: userContext,
+            ignoredQualityReasons: ignoredQualityReasons
         )
+        let jobID = createdJob.jobID
+        let debugSource: AnalysisDebugSource =
+            createdJob.status == .succeeded ? .backendReuse : .remoteFresh
 
-        let startedAt = Date()
-        while Date().timeIntervalSince(startedAt) < 45 {
+        let deadline = Date().addingTimeInterval(Self.scanJobTimeoutSeconds)
+        while Date() < deadline {
             let job = try await client.fetchScanJob(sessionToken: session.sessionToken, jobID: jobID)
             switch job.status {
             case .queued, .running:
-                try await Task.sleep(nanoseconds: 1_000_000_000)
+                try await Task.sleep(nanoseconds: Self.scanJobPollIntervalNanoseconds)
             case .rejected:
+                let qualityReasons = Self.imageQualityReasons(
+                    failureCode: job.failureCode,
+                    failureMessage: job.failureMessage
+                )
+                if !qualityReasons.isEmpty {
+                    let blockingReasons = qualityReasons.filter { !ignoredQualityReasons.contains($0) }
+                    if blockingReasons.isEmpty,
+                       let recoveredOutcome = try await fetchOverrideOutcomeIfReady(
+                        sessionToken: session.sessionToken,
+                        initialJob: job,
+                        jobID: jobID,
+                        debugSource: debugSource
+                       ) {
+                        return recoveredOutcome
+                    }
+
+                    throw SkinAnalysisRemoteError.insufficientImageQuality(
+                        reasons: ignoredQualityReasons.isEmpty || blockingReasons.isEmpty
+                            ? qualityReasons
+                            : blockingReasons
+                    )
+                }
+
                 throw BackendClientError.scanRejected(message: job.failureMessage ?? "This selfie could not be analyzed reliably.")
             case .failed:
                 throw BackendClientError.requestFailed(
@@ -75,12 +123,61 @@ public final class RemoteScanRepository: RemoteScanAnalyzing {
                 let scan = try await client.fetchScan(sessionToken: session.sessionToken, scanID: scanID)
                 return SkinAnalysisOutcome(
                     analysisID: scan.id,
-                    result: scan.asAnalysisResult
+                    result: scan.asAnalysisResult,
+                    debugMetadata: scan.debugMetadata(source: debugSource)
                 )
             }
         }
 
         throw BackendClientError.jobTimedOut
+    }
+
+    private func fetchOverrideOutcomeIfReady(
+        sessionToken: String,
+        initialJob: RemoteScanJob,
+        jobID: String,
+        debugSource: AnalysisDebugSource
+    ) async throws -> SkinAnalysisOutcome? {
+        if let scanID = initialJob.scanID {
+            let scan = try await client.fetchScan(sessionToken: sessionToken, scanID: scanID)
+            return SkinAnalysisOutcome(
+                analysisID: scan.id,
+                result: scan.asAnalysisResult,
+                debugMetadata: scan.debugMetadata(source: debugSource)
+            )
+        }
+
+        let deadline = Date().addingTimeInterval(4)
+        while Date() < deadline {
+            try await Task.sleep(nanoseconds: 750_000_000)
+            let refreshedJob = try await client.fetchScanJob(sessionToken: sessionToken, jobID: jobID)
+            if let scanID = refreshedJob.scanID {
+                let scan = try await client.fetchScan(sessionToken: sessionToken, scanID: scanID)
+                return SkinAnalysisOutcome(
+                    analysisID: scan.id,
+                    result: scan.asAnalysisResult,
+                    debugMetadata: scan.debugMetadata(source: debugSource)
+                )
+            }
+
+            if refreshedJob.status == .failed {
+                break
+            }
+        }
+
+        return nil
+    }
+
+    private static func imageQualityReasons(
+        failureCode: String?,
+        failureMessage: String?
+    ) -> [SkinImageQualityReason] {
+        let raw = [failureCode, failureMessage]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+
+        guard !raw.isEmpty else { return [] }
+        return SkinImageQualityReason.allCases.filter { raw.contains($0.rawValue) }
     }
 
     public func fetchRecentAnalyses() async throws -> [RemoteScanResult] {
@@ -104,6 +201,7 @@ public final class RemoteScanRepository: RemoteScanAnalyzing {
                     "Uniformity": criteria["Uniformity"] ?? 0,
                     "Luminosity": criteria["Luminosity"] ?? 0
                 ],
+                criterionInsights: analysis.criterionInsights,
                 observedConditions: SkinObservedConditions(
                     activeInflammation: .none,
                     scarringPitting: .none,
@@ -183,5 +281,38 @@ public final class RemoteJourneyRepository {
             )
         }
         try await client.importJourney(sessionToken: session.sessionToken, logs: payload)
+    }
+}
+
+public final class RemoteReferralRepository {
+    private let client: ConvexBackendClient
+    private let sessionService: BackendSessionService
+
+    public init(
+        client: ConvexBackendClient = ConvexBackendClient(),
+        sessionService: BackendSessionService
+    ) {
+        self.client = client
+        self.sessionService = sessionService
+    }
+
+    public func fetchStatus() async throws -> RemoteReferralStatus {
+        let session = try sessionService.requireCurrentSession()
+        return try await client.fetchReferralStatus(sessionToken: session.sessionToken)
+    }
+
+    public func createInvite() async throws -> RemoteReferralStatus {
+        let session = try sessionService.requireCurrentSession()
+        return try await client.createReferralInvite(sessionToken: session.sessionToken)
+    }
+
+    public func claimReferralCode(_ code: String) async throws -> RemoteReferralClaimResponse {
+        let session = try sessionService.requireCurrentSession()
+        return try await client.claimReferralCode(sessionToken: session.sessionToken, code: code)
+    }
+
+    public func fetchRewardLedger() async throws -> [RemoteReferralReward] {
+        let session = try sessionService.requireCurrentSession()
+        return try await client.fetchReferralRewards(sessionToken: session.sessionToken)
     }
 }

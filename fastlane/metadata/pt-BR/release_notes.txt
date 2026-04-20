@@ -1,0 +1,1 @@
+Ajustes de launch para scans em nuvem, consentimento, referrals e submissao.

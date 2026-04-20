@@ -14,6 +14,7 @@ DerivedData/
 # Logs and local artifacts
 build.log
 *.log
+skinlit-pages.zip
 
 # Swift Package Manager
 .build/
@@ -21,3 +22,16 @@ build.log
 # IDE
 .idea/
 .vscode/
+
+# Bundler / fastlane local tooling
+.bundle/
+vendor/bundle/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output/
+fastlane/screenshots/
+
+# App Store Connect local credentials
+Config/Environment/app_store_connect.env
+AuthKey_*.p8
+*.p8

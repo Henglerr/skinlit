@@ -46,7 +46,7 @@ struct ScanShareGateView: View {
                         .scaleEffect(contentOpacity)
 
                         VStack(spacing: 10) {
-                            Text("Share SkinScore")
+                            Text("Share SkinLit")
                                 .font(.system(size: 30, weight: .heavy))
                                 .foregroundColor(AppTheme.shared.current.colors.textPrimary)
                                 .multilineTextAlignment(.center)
@@ -63,6 +63,11 @@ struct ScanShareGateView: View {
 
                         VStack(spacing: 10) {
                             statPill(title: "Shares sent", value: "\(appState.referralShareCount)")
+                            statPill(title: "Validated", value: "\(appState.validatedReferralCount)")
+
+                            if let inviteCode = appState.referralInviteCode {
+                                statPill(title: "Your code", value: inviteCode)
+                            }
 
                             Text(validationProgressCopy)
                                 .font(.system(size: 13, weight: .medium))
@@ -71,6 +76,20 @@ struct ScanShareGateView: View {
                                 .lineLimit(nil)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .layoutPriority(1)
+
+                            if let successMessage = appState.referralSuccessMessage {
+                                Text(successMessage)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(AppTheme.shared.current.colors.accent)
+                                    .multilineTextAlignment(.center)
+                            }
+
+                            if let errorMessage = appState.referralErrorMessage {
+                                Text(errorMessage)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(AppTheme.shared.current.colors.error)
+                                    .multilineTextAlignment(.center)
+                            }
                         }
                         .opacity(contentOpacity)
                     }
@@ -83,25 +102,37 @@ struct ScanShareGateView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showShareSheet) {
-            ShareSheet(items: AppConfig.shareSheetItems()) { activityType in
+            ShareSheet(items: appState.referralShareItems) { activityType in
                 appState.recordReferralShareAttempt(activityType: activityType)
             }
         }
         .onAppear {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.75)) { contentOpacity = 1 }
             withAnimation(.easeOut(duration: 0.6)) { slideOffset = 0 }
+            Task {
+                _ = await appState.prepareReferralInvite()
+            }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 12) {
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showShareSheet = true
+                    Task {
+                        let isReady = await appState.prepareReferralInvite()
+                        guard isReady else { return }
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        showShareSheet = true
+                    }
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 17, weight: .semibold))
-                        Text("Send Invite")
-                            .font(.system(size: 17, weight: .bold))
+                        if appState.isReferralLoading {
+                            ProgressView()
+                                .tint(AppTheme.shared.current.colors.bgPrimary)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 17, weight: .semibold))
+                            Text("Send Invite")
+                                .font(.system(size: 17, weight: .bold))
+                        }
                     }
                     .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
                     .frame(maxWidth: .infinity)
@@ -110,8 +141,8 @@ struct ScanShareGateView: View {
                     .cornerRadius(20)
                     .shadow(color: AppTheme.shared.current.colors.accentGlow, radius: 12, x: 0, y: 4)
                 }
-                .disabled(!AppConfig.isShareConfigured())
-                .opacity(AppConfig.isShareConfigured() ? 1 : 0.55)
+                .disabled(appState.isReferralLoading || !AppConfig.isShareConfigured())
+                .opacity(appState.isReferralLoading || !AppConfig.isShareConfigured() ? 0.55 : 1)
 
                 Button { appState.goBack() } label: {
                     Text("Back")
@@ -128,15 +159,19 @@ struct ScanShareGateView: View {
     }
 
     private var validationProgressCopy: String {
+        if !AppConfig.isReferralsEnabled() {
+            return "Referral rewards are temporarily unavailable in this build."
+        }
+
         if !AppConfig.isShareConfigured() {
-            return "Add the production app share URL before enabling sharing in this build."
+            return "Add the production https://skinlit.lat URL before enabling referral sharing in this build."
         }
 
         if !appState.canEarnReferralRewards {
-            return "Sharing is available after signing in with Apple or Google."
+            return "Sharing is available after you activate cloud beta with Apple or Google."
         }
 
-        return "Use your production App Store link so people land on the live app page."
+        return "Track validated referrals here. Friends must sign in, finish onboarding, and complete a successful first scan to count."
     }
 
     private func statPill(title: String, value: String) -> some View {

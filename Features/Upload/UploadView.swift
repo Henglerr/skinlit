@@ -4,6 +4,7 @@ import UIKit
 struct UploadView: View {
     @EnvironmentObject var appState: AppState
     @State private var showTip = true
+    @State private var showShareSheet = false
 
     var body: some View {
         ZStack {
@@ -65,7 +66,7 @@ struct UploadView: View {
                         Image(systemName: "lightbulb.fill")
                             .foregroundColor(AppTheme.shared.current.colors.warning)
                             .font(.system(size: 14))
-                        Text("Use natural light for the most accurate result")
+                        Text("Use natural light for a clearer result")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                     }
@@ -139,8 +140,8 @@ struct UploadView: View {
                     }
 
                     if AppConfig.isShareConfigured() {
-                        Button(action: { appState.navigate(to: .shareGate) }) {
-                            Text("Share Skin Score")
+                        Button(action: handleShareAction) {
+                            Text("Share SkinLit")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(AppTheme.shared.current.colors.textSecondary)
                                 .underline()
@@ -152,11 +153,21 @@ struct UploadView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(items: appState.genericShareItems)
+        }
+        .onAppear {
+            _ = appState.ensureAuthenticatedScanAvailability(redirectToAuth: true)
+        }
     }
 
     private var scanStatusText: String {
         if appState.isProActive {
             return "PRO active"
+        }
+
+        if appState.hasUnlimitedScans {
+            return "Unlimited scans"
         }
 
         if appState.remainingFreeScans > 0 {
@@ -179,10 +190,14 @@ struct UploadView: View {
     }
 
     private func handlePrimaryAction(useCamera: Bool) {
-        if appState.canRunScan {
-            appState.navigate(to: .scanPrep(useCamera: useCamera))
+        appState.openScanPrep(useCamera: useCamera)
+    }
+
+    private func handleShareAction() {
+        if AppConfig.isReferralsEnabled() {
+            appState.navigate(to: .shareGate)
         } else {
-            appState.openPaywall()
+            showShareSheet = true
         }
     }
 }

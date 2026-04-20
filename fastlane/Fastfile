@@ -1,0 +1,176 @@
+default_platform(:ios)
+opt_out_usage
+
+ROOT_DIR = File.expand_path("..", __dir__)
+PROJECT_PATH = File.join(ROOT_DIR, "SkinScore.xcodeproj")
+METADATA_PATH = File.join(__dir__, "metadata")
+SCREENSHOTS_PATH = File.join(__dir__, "screenshots")
+APP_STORE_CONNECT_SCRIPT = File.join(ROOT_DIR, "scripts", "app_store_connect_cli.rb")
+SUBMISSION_DOCTOR_SCRIPT = File.join(ROOT_DIR, "scripts", "submission_doctor.sh")
+DOCS_VALIDATE_SCRIPT = File.join(ROOT_DIR, "scripts", "validate_docs_site.sh")
+APP_STORE_CONNECT_ENV = File.join(ROOT_DIR, "Config", "Environment", "app_store_connect.env")
+
+def load_env_file(path)
+  return unless File.exist?(path)
+
+  base_dir = File.dirname(path)
+  File.readlines(path, chomp: true).each do |line|
+    stripped = line.strip
+    next if stripped.empty? || stripped.start_with?("#")
+
+    stripped = stripped.sub(/\Aexport\s+/, "")
+    key, raw_value = stripped.split("=", 2)
+    next if key.to_s.empty? || raw_value.nil?
+
+    value = raw_value.strip
+    if (value.start_with?('"') && value.end_with?('"')) || (value.start_with?("'") && value.end_with?("'"))
+      value = value[1...-1]
+    end
+
+    if key == "ASC_PRIVATE_KEY_PATH" && !value.empty? && !value.start_with?("/")
+      value = File.expand_path(value, base_dir)
+    end
+
+    ENV[key] = value
+  end
+end
+
+def skinlit_api_key
+  key_id = ENV["ASC_KEY_ID"].to_s
+  issuer_id = ENV["ASC_ISSUER_ID"].to_s
+  key_content = ENV["ASC_PRIVATE_KEY"].to_s
+  key_filepath = ENV["ASC_PRIVATE_KEY_PATH"].to_s
+
+  return nil if key_id.empty? || issuer_id.empty? || (key_content.empty? && key_filepath.empty?)
+
+  options = {
+    key_id: key_id,
+    issuer_id: issuer_id,
+    duration: 1200,
+    in_house: false
+  }
+
+  if key_content.empty?
+    options[:key_filepath] = File.expand_path(key_filepath, Dir.pwd)
+  else
+    options[:key_content] = key_content
+  end
+
+  app_store_connect_api_key(**options)
+end
+
+platform :ios do
+  before_all do
+    load_env_file(APP_STORE_CONNECT_ENV)
+    api_key = skinlit_api_key
+    next if api_key.nil?
+
+    Actions.lane_context[SharedValues::APP_STORE_CONNECT_API_KEY] = api_key
+  end
+
+  private_lane :require_api_key do
+    api_key = Actions.lane_context[SharedValues::APP_STORE_CONNECT_API_KEY] || skinlit_api_key
+    UI.user_error!("Missing ASC API key envs. Set ASC_KEY_ID, ASC_ISSUER_ID, and ASC_PRIVATE_KEY_PATH or ASC_PRIVATE_KEY.") if api_key.nil?
+    api_key
+  end
+
+  desc "Run the repo's submission readiness doctor"
+  lane :readiness_doctor do |options|
+    args = []
+    args << "--skip-tests" if options[:skip_tests]
+    args << "--skip-remote-site" if options[:skip_remote_site]
+    sh(SUBMISSION_DOCTOR_SCRIPT, *args)
+  end
+
+  desc "Run the App Store Connect subscription doctor"
+  lane :asc_doctor do
+    sh("ruby", APP_STORE_CONNECT_SCRIPT, "doctor", "--bundle-id", CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier))
+  end
+
+  desc "Validate the legal site package and public launch URLs"
+  lane :site_validate do |options|
+    args = []
+    args += ["--base-url", options[:base_url]] if options[:base_url]
+    args << "--skip-remote" if options[:skip_remote]
+    sh(DOCS_VALIDATE_SCRIPT, *args)
+  end
+
+  desc "Run fastlane precheck against the current App Store metadata"
+  lane :precheck_metadata do
+    api_key = require_api_key
+    check_app_store_metadata(
+      api_key: api_key,
+      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      include_in_app_purchases: false
+    )
+  end
+
+  desc "Archive the Release build and upload it to TestFlight"
+  lane :beta do |options|
+    api_key = require_api_key
+    build_ios_app(
+      project: PROJECT_PATH,
+      scheme: "SkinScore",
+      configuration: "Release",
+      clean: options.fetch(:clean, true),
+      export_method: options[:export_method] || "app-store"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: options.fetch(:skip_waiting_for_build_processing, true),
+      changelog: options[:changelog]
+    )
+  end
+
+  desc "Upload local App Store metadata without touching the binary"
+  lane :metadata do |options|
+    api_key = require_api_key
+    deliver(
+      api_key: api_key,
+      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      metadata_path: options[:metadata_path] || METADATA_PATH,
+      skip_binary_upload: true,
+      skip_screenshots: options.fetch(:skip_screenshots, true),
+      edit_live: options.fetch(:edit_live, false),
+      force: true,
+      submit_for_review: false,
+      automatic_release: false,
+      precheck_include_in_app_purchases: false
+    )
+  end
+
+  desc "Upload screenshots already present in fastlane/screenshots"
+  lane :screenshots do |options|
+    api_key = require_api_key
+    deliver(
+      api_key: api_key,
+      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      screenshots_path: options[:screenshots_path] || SCREENSHOTS_PATH,
+      skip_binary_upload: true,
+      skip_metadata: true,
+      edit_live: options.fetch(:edit_live, false),
+      force: true,
+      submit_for_review: false,
+      automatic_release: false,
+      precheck_include_in_app_purchases: false
+    )
+  end
+
+  desc "Submit the prepared metadata, screenshots, and selected build for App Review"
+  lane :submit_review do |options|
+    api_key = require_api_key
+    deliver(
+      api_key: api_key,
+      app_identifier: CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      metadata_path: options[:metadata_path] || METADATA_PATH,
+      screenshots_path: options[:screenshots_path] || SCREENSHOTS_PATH,
+      build_number: options[:build_number],
+      force: true,
+      submit_for_review: true,
+      automatic_release: options.fetch(:automatic_release, false),
+      skip_binary_upload: options.fetch(:skip_binary_upload, true),
+      precheck_include_in_app_purchases: false
+    )
+  end
+end

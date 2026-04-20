@@ -51,12 +51,14 @@
 		A9D200000000000000000103 /* SettingsRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001104 /* SettingsRepositoryTests.swift */; };
 		A9D200000000000000000104 /* LocalNotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001105 /* LocalNotificationServiceTests.swift */; };
 		A9D200000000000000000105 /* CompositeSkinAnalysisServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001106 /* CompositeSkinAnalysisServiceTests.swift */; };
+		A9D200000000000000000106 /* AnalysisRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D200000000000000001107 /* AnalysisRepositoryTests.swift */; };
 		AEF44CF9C53BE64743C85321 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D14899046A1E3E0A07DF7618 /* AuthView.swift */; };
 		B83CC7D8B14DCAB76A7C1B27 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930F2E9BF4065C3B90C0E710 /* ImagePicker.swift */; };
 		BC421C060B7A5BEBDB5A1879 /* LocalUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5395692BEE9F1849D0BB9F /* LocalUser.swift */; };
 		C53EB1477DB895C4E02698B3 /* BackendModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F9F0BB639B79346B5FEC6A7 /* BackendModels.swift */; };
 		CC55D3F4C6763200E37FD726 /* BackendSessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C492C67DC6A4011EF3CDE0 /* BackendSessionService.swift */; };
 		CC93EEB7D93B9F9CCEE8CB31 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 231FA15202318184ACCA012E /* GoogleSignIn */; };
+		CC93EEB8D93B9F9CCEE8CB31 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 231FA15302318184ACCA012E /* GoogleSignInSwift */; };
 		D0F7D12CFECFB558C9CB011F /* AppLocalSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BB1DF887C2D8BEFEF0823A /* AppLocalSettings.swift */; };
 		D16DFBFF07011995512D5785 /* OnboardingRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EFD5C0B7C1935AC59CB6EAC /* OnboardingRepository.swift */; };
 		D9993F854F38ED9AD44E847C /* UploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C359E61981649D9015254352 /* UploadView.swift */; };
@@ -85,12 +87,12 @@
 		02BB1DF887C2D8BEFEF0823A /* AppLocalSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalSettings.swift; sourceTree = "<group>"; };
 		0B03CE3E5EF7347C1180B488 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
 		0F2E4667F311F100A8C1E2FB /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		12FD5871C89833F70E337A99 /* ConvexBackendClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConvexBackendClient.swift; path = ConvexBackendClient.swift; sourceTree = "<group>"; };
+		12FD5871C89833F70E337A99 /* ConvexBackendClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConvexBackendClient.swift; sourceTree = "<group>"; };
 		158AC89A13240A83B6B80D4F /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		15B4C4BEB3ADD2095D2DBBAE /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		25B9153CD631076352375988 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2EF5ACE23C04209C9D6C20F2 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
-		2F9F0BB639B79346B5FEC6A7 /* BackendModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackendModels.swift; path = BackendModels.swift; sourceTree = "<group>"; };
+		2F9F0BB639B79346B5FEC6A7 /* BackendModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackendModels.swift; sourceTree = "<group>"; };
 		3AB6F388787CDD65C5E6F85A /* FaceImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceImageProcessor.swift; sourceTree = "<group>"; };
 		3E64E88ECAB4EDBD93C64528 /* SettingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRepository.swift; sourceTree = "<group>"; };
 		3EC831BA534B05134C26346F /* VisionFaceDetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionFaceDetectionService.swift; sourceTree = "<group>"; };
@@ -103,22 +105,22 @@
 		5A891CDA9D7E392374D1D007 /* ScanShareGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanShareGateView.swift; sourceTree = "<group>"; };
 		61582100A975D58122B182F7 /* LocalAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAnalysis.swift; sourceTree = "<group>"; };
 		6334D0827A0549335787EBA5 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
-		6881195FD7CA1DB4A7B7B148 /* BackendSessionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackendSessionStore.swift; path = BackendSessionStore.swift; sourceTree = "<group>"; };
+		6881195FD7CA1DB4A7B7B148 /* BackendSessionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackendSessionStore.swift; sourceTree = "<group>"; };
 		6922D17D4361C2F566D0773F /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		6E5395692BEE9F1849D0BB9F /* LocalUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalUser.swift; sourceTree = "<group>"; };
 		70839CB48C04EFF93B7BE93D /* SkinScore.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SkinScore.entitlements; sourceTree = "<group>"; };
 		7631A7914C646E9D6C8EFD72 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		77FF0337CF765F75BD26D924 /* Debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		77FF0337CF765F75BD26D924 /* Debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		89B2F06B1246FC4F3B179F39 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
 		8C2388E76795E2E011D71955 /* GoalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalCard.swift; sourceTree = "<group>"; };
 		8EFD5C0B7C1935AC59CB6EAC /* OnboardingRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingRepository.swift; sourceTree = "<group>"; };
 		930F2E9BF4065C3B90C0E710 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
 		97C6300F89C763F0D0340EAE /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
-		97C85474533A209581A5CB64 /* RemoteRepositories.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemoteRepositories.swift; path = RemoteRepositories.swift; sourceTree = "<group>"; };
+		97C85474533A209581A5CB64 /* RemoteRepositories.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemoteRepositories.swift; sourceTree = "<group>"; };
 		A1B2C3D60123456789ABCDEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D70123456789ABCDEF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		A1C492C67DC6A4011EF3CDE0 /* BackendSessionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackendSessionService.swift; path = BackendSessionService.swift; sourceTree = "<group>"; };
-		A35D470B99CD65F9C2709E24 /* Release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		A1C492C67DC6A4011EF3CDE0 /* BackendSessionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackendSessionService.swift; sourceTree = "<group>"; };
+		A35D470B99CD65F9C2709E24 /* Release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		A5DDE470F8A05C9EB3D3A949 /* OnDeviceSkinAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSkinAnalyzer.swift; sourceTree = "<group>"; };
 		A9C1111E0D8145C1B2210011 /* SkinJourneyLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyLog.swift; sourceTree = "<group>"; };
 		A9C1111E0D8145C1B2210012 /* SkinJourneyRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinJourneyRepository.swift; sourceTree = "<group>"; };
@@ -134,6 +136,7 @@
 		A9D200000000000000001104 /* SettingsRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRepositoryTests.swift; sourceTree = "<group>"; };
 		A9D200000000000000001105 /* LocalNotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationServiceTests.swift; sourceTree = "<group>"; };
 		A9D200000000000000001106 /* CompositeSkinAnalysisServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeSkinAnalysisServiceTests.swift; sourceTree = "<group>"; };
+		A9D200000000000000001107 /* AnalysisRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisRepositoryTests.swift; sourceTree = "<group>"; };
 		B014D8543F15818D08504C08 /* BillingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingService.swift; sourceTree = "<group>"; };
 		B85FD535035CD233113566BC /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		B962EF34BB460BBCF95C2268 /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
@@ -143,9 +146,9 @@
 		CA036E8B6A7F92AFD1C5D01E /* RemainingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemainingViews.swift; sourceTree = "<group>"; };
 		D14899046A1E3E0A07DF7618 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		E0797336A6978E9EFBCEEC05 /* AnalysisRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisRepository.swift; sourceTree = "<group>"; };
-		E36C8E101165A58C2B48239F /* SkinScore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkinScore.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E36C8E101165A58C2B48239F /* SkinLit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkinLit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3B96F886D318F3CCA0386A2 /* OnboardingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViews.swift; sourceTree = "<group>"; };
-		E86484F464107D6B539113B2 /* RemoteDataSyncService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemoteDataSyncService.swift; path = RemoteDataSyncService.swift; sourceTree = "<group>"; };
+		E86484F464107D6B539113B2 /* RemoteDataSyncService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RemoteDataSyncService.swift; sourceTree = "<group>"; };
 		EA4BA95003EEE7ECE6C5E8CF /* SkinScoreApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinScoreApp.swift; sourceTree = "<group>"; };
 		EABC74139F7D86A2F25167BE /* SkinAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkinAnalysisService.swift; sourceTree = "<group>"; };
 		EE69A8F717CD30675B3989B2 /* RoutineCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineCard.swift; sourceTree = "<group>"; };
@@ -164,6 +167,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CC93EEB7D93B9F9CCEE8CB31 /* GoogleSignIn in Frameworks */,
+				CC93EEB8D93B9F9CCEE8CB31 /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,7 +313,6 @@
 				97C85474533A209581A5CB64 /* RemoteRepositories.swift */,
 				E86484F464107D6B539113B2 /* RemoteDataSyncService.swift */,
 			);
-			name = Backend;
 			path = Backend;
 			sourceTree = "<group>";
 		};
@@ -364,6 +367,7 @@
 		A9D200000000000000002002 /* SkinScoreTests */ = {
 			isa = PBXGroup;
 			children = (
+				A9D200000000000000001107 /* AnalysisRepositoryTests.swift */,
 				A9D200000000000000001106 /* CompositeSkinAnalysisServiceTests.swift */,
 				A9D200000000000000001104 /* SettingsRepositoryTests.swift */,
 				A9D200000000000000001103 /* OnboardingDraftRepositoryTests.swift */,
@@ -401,7 +405,7 @@
 		C49BD034564E9787435ED28F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				E36C8E101165A58C2B48239F /* SkinScore.app */,
+				E36C8E101165A58C2B48239F /* SkinLit.app */,
 				A9D200000000000000001101 /* SkinScoreTests.xctest */,
 			);
 			name = Products;
@@ -493,6 +497,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25EA27BDB3F6EA3493590B2C /* Build configuration list for PBXNativeTarget "SkinScore" */;
 			buildPhases = (
+				D4E7B9C1234ABCD0000F1001 /* Validate Backend Endpoint */,
 				3FE1C954E828A3002C2783FF /* Sources */,
 				F3E9CB627BBE56BFCA1B9931 /* Frameworks */,
 				A1B2C3D80123456789ABCDEF /* Resources */,
@@ -504,9 +509,10 @@
 			name = SkinScore;
 			packageProductDependencies = (
 				231FA15202318184ACCA012E /* GoogleSignIn */,
+				231FA15302318184ACCA012E /* GoogleSignInSwift */,
 			);
-			productName = SkinScore;
-			productReference = E36C8E101165A58C2B48239F /* SkinScore.app */;
+			productName = SkinLit;
+			productReference = E36C8E101165A58C2B48239F /* SkinLit.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -523,7 +529,6 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				Base,
 				en,
 			);
 			mainGroup = A3FDE071F181EB2225F09D20;
@@ -558,6 +563,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D4E7B9C1234ABCD0000F1001 /* Validate Backend Endpoint */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Resources/SkinScore.entitlements",
+			);
+			name = "Validate Backend Endpoint";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/validate_backend_endpoint.stamp",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n\ntrim() {\n  printf '%s' \"${1:-}\" | tr -d '[:space:]'\n}\n\nfail() {\n  echo \"error: $1\"\n  exit 1\n}\n\nvalidate_required_string() {\n  key=\"$1\"\n  value=\"$(trim \"${2:-}\")\"\n  if [ -z \"$value\" ] || printf '%s' \"$value\" | grep -Fq '$('; then\n    fail \"$key is required for this build.\"\n  fi\n}\n\nvalidate_url() {\n  key=\"$1\"\n  value=\"$(trim \"${2:-}\")\"\n  validate_required_string \"$key\" \"$value\"\n  case \"$value\" in\n    http://*|https://*) ;;\n    *) fail \"$key must start with http:// or https://. Got '$value'.\" ;;\n  esac\n\n  host=\"${value#*://}\"\n  host=\"${host%%/*}\"\n  case \"$host\" in\n    *.*) ;;\n    *) fail \"$key must include a valid host. Got '$value'.\" ;;\n  esac\n}\n\nconfiguration=\"${CONFIGURATION:-Debug}\"\nendpoint=\"$(trim \"${SKIN_ANALYSIS_API_ENDPOINT:-}\")\"\nvalidate_url \"SKIN_ANALYSIS_API_ENDPOINT\" \"$endpoint\"\n\nif [ \"$configuration\" != \"Release\" ]; then\n  exit 0\nfi\n\nvalidate_required_string \"GOOGLE_CLIENT_ID\" \"${GOOGLE_CLIENT_ID:-}\"\nvalidate_required_string \"GOOGLE_REVERSED_CLIENT_ID\" \"${GOOGLE_REVERSED_CLIENT_ID:-}\"\nvalidate_url \"APP_SHARE_URL\" \"${APP_SHARE_URL:-}\"\n\nshare_url=\"$(trim \"${APP_SHARE_URL:-}\")\"\nshare_host=\"${share_url#*://}\"\nshare_host=\"${share_host%%/*}\"\nif [ \"$share_host\" != \"skinlit.lat\" ]; then\n  fail \"APP_SHARE_URL must use https://skinlit.lat for launch referrals. Got '$share_url'.\"\nfi\n\nentitlements_file=\"${SCRIPT_INPUT_FILE_0:-${SRCROOT}/Resources/SkinScore.entitlements}\"\nif ! grep -Fq '<string>applinks:skinlit.lat</string>' \"$entitlements_file\"; then\n  fail \"Resources/SkinScore.entitlements must include applinks:skinlit.lat.\"\nfi\n\nmkdir -p \"${DERIVED_FILE_DIR}\"\ntouch \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3FE1C954E828A3002C2783FF /* Sources */ = {
@@ -625,6 +653,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9D200000000000000000106 /* AnalysisRepositoryTests.swift in Sources */,
 				A9D200000000000000000105 /* CompositeSkinAnalysisServiceTests.swift in Sources */,
 				A9D200000000000000000104 /* LocalNotificationServiceTests.swift in Sources */,
 				A9D200000000000000000102 /* OnboardingDraftRepositoryTests.swift in Sources */,
@@ -710,12 +739,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SkinScore.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = R885523S6A;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
+				PRODUCT_BUNDLE_IDENTIFIER = com.skinlit.SkinLit;
+				PRODUCT_NAME = SkinLit;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -728,12 +759,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SkinScore.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = R885523S6A;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScore;
+				PRODUCT_BUNDLE_IDENTIFIER = com.skinlit.SkinLit;
+				PRODUCT_NAME = SkinLit;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -752,13 +785,13 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.skinlit.SkinLitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SkinScore.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SkinScore";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SkinLit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SkinLit";
 			};
 			name = Debug;
 		};
@@ -775,12 +808,12 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.skinscore.SkinScoreTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.skinlit.SkinLitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SkinScore.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SkinScore";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SkinLit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SkinLit";
 			};
 			name = Release;
 		};
@@ -898,6 +931,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F9FAD7E1842E419E9B953712 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignIn;
+		};
+		231FA15302318184ACCA012E /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F9FAD7E1842E419E9B953712 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

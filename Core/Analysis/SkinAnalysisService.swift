@@ -21,6 +21,16 @@ public protocol SkinAnalysisRemoteClient {
     func analyze(imageData: Data, userContext: SkinAnalysisUserContext?) async throws -> OnDeviceAnalysisResult
 }
 
+public protocol SkinAnalysisQualityOverrideService {
+    var isConfigured: Bool { get }
+    func analyze(
+        imageData: Data,
+        imageHash: String?,
+        userContext: SkinAnalysisUserContext?,
+        ignoredQualityReasons: Set<SkinImageQualityReason>
+    ) async throws -> SkinAnalysisOutcome
+}
+
 public struct SkinAnalysisUserContext: Codable, Equatable {
     public let skinTypes: [String]
     public let goal: String?
@@ -161,6 +171,7 @@ public enum SkinImageQualityStatus: String, Codable {
 }
 
 public enum SkinImageQualityReason: String, Codable, CaseIterable {
+    case noFace = "no_face"
     case lowLight = "low_light"
     case overexposed
     case blur
@@ -172,6 +183,8 @@ public enum SkinImageQualityReason: String, Codable, CaseIterable {
 
     public var userFacingDescription: String {
         switch self {
+        case .noFace:
+            return "no face detected"
         case .lowLight:
             return "low light"
         case .overexposed:
@@ -243,6 +256,7 @@ public struct SkinDetailedAssessmentResponse: Decodable, Equatable {
     public let summary: String
     public let skinTypeDetected: String
     public let criteria: [String: Double]
+    public let criterionInsights: [String: SkinCriterionInsight]?
     public let observedConditions: SkinObservedConditions
 
     enum CodingKeys: String, CodingKey {
@@ -250,6 +264,7 @@ public struct SkinDetailedAssessmentResponse: Decodable, Equatable {
         case summary
         case skinTypeDetected = "skin_type_detected"
         case criteria
+        case criterionInsights = "criterion_insights"
         case observedConditions = "observed_conditions"
     }
 }

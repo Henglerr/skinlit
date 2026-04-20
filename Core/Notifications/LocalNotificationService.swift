@@ -18,7 +18,7 @@ public final class LocalNotificationService: NSObject, NotificationService, UNUs
 
     private let center: UserNotificationCenterProtocol
     private let planner: ReengagementPlanner
-    private let stateQueue = DispatchQueue(label: "com.skinscore.notifications.state")
+    private let stateQueue = DispatchQueue(label: "com.skinlit.notifications.state")
     private var pendingOpenIntent: NotificationOpenIntent?
 
     public init(

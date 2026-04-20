@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import SkinScore
+@testable import SkinLit
 
 @MainActor
 final class OnboardingDraftRepositoryTests: XCTestCase {

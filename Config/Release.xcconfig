@@ -1,1 +1,6 @@
 #include "Environment/Base.xcconfig"
+
+DEVELOPER_MODE = NO
+APP_MODE = production
+UNLIMITED_SCANS_MODE = NO
+REFERRALS_ENABLED = YES

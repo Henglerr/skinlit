@@ -44,6 +44,7 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
     private let endpointString: String
     private let authToken: String
     private let model: String
+    private let reasoningEffort: String
     private let session: URLSession
     private let analysisVersion: String
     private let referenceCatalogLoader: () throws -> SkinReferenceCatalog
@@ -57,6 +58,7 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
         self.endpointString = AppConfig.skinAnalysisAPIEndpoint(bundle: bundle)
         self.authToken = AppConfig.openAIAPIKey(bundle: bundle)
         self.model = AppConfig.openAIVisionModel(bundle: bundle)
+        self.reasoningEffort = AppConfig.openAIVisionReasoningEffort(bundle: bundle)
         self.session = session
         self.analysisVersion = AppConfig.skinAnalysisVersion
         self.referenceCatalogLoader = { try SkinReferenceCatalog(bundle: bundle) }
@@ -66,6 +68,7 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
         endpointString: String = "",
         authToken: String = "",
         model: String = AppConfig.defaultOpenAIVisionModel,
+        reasoningEffort: String = AppConfig.defaultOpenAIVisionReasoningEffort,
         session: URLSession = .shared,
         analysisVersion: String = AppConfig.skinAnalysisVersion,
         referenceCatalogLoader: @escaping () throws -> SkinReferenceCatalog
@@ -73,12 +76,25 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
         self.endpointString = endpointString
         self.authToken = authToken
         self.model = model
+        self.reasoningEffort = reasoningEffort
         self.session = session
         self.analysisVersion = analysisVersion
         self.referenceCatalogLoader = referenceCatalogLoader
     }
 
     public func analyze(imageData: Data, userContext: SkinAnalysisUserContext?) async throws -> OnDeviceAnalysisResult {
+        try await analyze(
+            imageData: imageData,
+            userContext: userContext,
+            ignoredQualityReasons: []
+        )
+    }
+
+    public func analyze(
+        imageData: Data,
+        userContext: SkinAnalysisUserContext?,
+        ignoredQualityReasons: Set<SkinImageQualityReason>
+    ) async throws -> OnDeviceAnalysisResult {
         guard isConfigured else {
             throw SkinAnalysisRemoteError.missingAPIKey
         }
@@ -105,7 +121,10 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
         try verifyAnalysisVersion(classification.analysisVersion)
 
         if classification.imageQualityStatus == .insufficient {
-            throw SkinAnalysisRemoteError.insufficientImageQuality(reasons: classification.imageQualityReasons)
+            let blockingReasons = classification.imageQualityReasons.filter { !ignoredQualityReasons.contains($0) }
+            if !blockingReasons.isEmpty {
+                throw SkinAnalysisRemoteError.insufficientImageQuality(reasons: blockingReasons)
+            }
         }
 
         let detailedReferences = try referenceCatalog.assets(
@@ -131,7 +150,8 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
             score: score,
             summary: normalizedSummary(detailed.summary),
             skinTypeDetected: detailed.skinTypeDetected.nonEmpty ?? "Unknown",
-            criteria: normalizedCriteria
+            criteria: normalizedCriteria,
+            criterionInsights: detailed.criterionInsights
         )
     }
 
@@ -219,7 +239,7 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
             "content": userContent
         ]
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "input": [developerMessage, userMessage],
             "max_output_tokens": maxOutputTokens,
@@ -232,6 +252,13 @@ public struct OpenAIResponsesSkinAnalyzer: SkinAnalysisRemoteClient {
                 ]
             ]
         ]
+
+        let trimmedReasoningEffort = reasoningEffort.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedReasoningEffort.isEmpty {
+            body["reasoning"] = [
+                "effort": trimmedReasoningEffort
+            ]
+        }
 
         let bodyData = try JSONSerialization.data(withJSONObject: body, options: [])
         var request = URLRequest(url: endpoint)
@@ -359,6 +386,7 @@ Return JSON only.
                 "summary",
                 "skin_type_detected",
                 "criteria",
+                "criterion_insights",
                 "observed_conditions"
             ],
             "properties": [
@@ -383,7 +411,49 @@ Return JSON only.
                         "Luminosity": numericCriterionSchema()
                     ]
                 ],
+                "criterion_insights": criterionInsightsSchema(),
                 "observed_conditions": observedConditionsSchema()
+            ]
+        ]
+    }
+
+    private func criterionInsightsSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["Hydration", "Texture", "Uniformity", "Luminosity"],
+            "properties": [
+                "Hydration": criterionInsightSchema(),
+                "Texture": criterionInsightSchema(),
+                "Uniformity": criterionInsightSchema(),
+                "Luminosity": criterionInsightSchema()
+            ]
+        ]
+    }
+
+    private func criterionInsightSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "status",
+                "summary",
+                "positive_observations",
+                "negative_observations",
+                "routine_focus"
+            ],
+            "properties": [
+                "status": ["type": "string"],
+                "summary": ["type": "string"],
+                "positive_observations": [
+                    "type": "array",
+                    "items": ["type": "string"]
+                ],
+                "negative_observations": [
+                    "type": "array",
+                    "items": ["type": "string"]
+                ],
+                "routine_focus": ["type": "string"]
             ]
         ]
     }
@@ -502,10 +572,10 @@ Return JSON only.
         guard !trimmed.isEmpty else { return "Analysis complete." }
 
         let words = trimmed.split(whereSeparator: \.isWhitespace)
-        if words.count <= 12 {
+        if words.count <= 90 {
             return trimmed
         }
-        return words.prefix(12).joined(separator: " ")
+        return words.prefix(90).joined(separator: " ")
     }
 
     private func resolveEndpoint() throws -> URL {

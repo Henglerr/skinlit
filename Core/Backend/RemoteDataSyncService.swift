@@ -50,6 +50,15 @@ public final class RemoteDataSyncService {
         for scan in remoteScans {
             let criteriaData = try JSONEncoder().encode(scan.criteria)
             let criteriaJSON = String(data: criteriaData, encoding: .utf8) ?? "{}"
+            let criterionInsightsJSON: String?
+            if let criterionInsights = scan.criterionInsights {
+                let criterionInsightsData = try JSONEncoder().encode(criterionInsights)
+                criterionInsightsJSON = String(data: criterionInsightsData, encoding: .utf8)
+            } else {
+                criterionInsightsJSON = nil
+            }
+            let debugMetadataData = try JSONEncoder().encode(scan.debugMetadata(source: .remoteSynced))
+            let debugMetadataJSON = String(data: debugMetadataData, encoding: .utf8)
             try await MainActor.run {
                 try analysisRepository.saveAnalysis(
                     id: scan.id,
@@ -58,7 +67,10 @@ public final class RemoteDataSyncService {
                     summary: scan.summary,
                     skinTypeDetected: scan.skinTypeDetected,
                     imageHash: nil,
-                    criteriaJSON: criteriaJSON
+                    criteriaJSON: criteriaJSON,
+                    criterionInsightsJSON: criterionInsightsJSON,
+                    debugMetadataJSON: debugMetadataJSON,
+                    createdAt: scan.createdAt
                 )
             }
         }

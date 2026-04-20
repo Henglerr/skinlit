@@ -29,9 +29,17 @@ public final class AnalysisRepository {
         return try context.fetch(descriptor).first
     }
 
-    public func touchAnalysis(id: String) throws {
+    public func updateAnalysisLocalImagePath(id: String, localImageRelativePath: String?) throws {
         guard let existing = try analysis(byId: id) else { return }
-        existing.createdAt = .now
+        existing.localImageRelativePath = localImageRelativePath
+        try context.save()
+    }
+
+    public func updateAnalysisDebugMetadata(id: String, debugMetadataJSON: String? = nil) throws {
+        guard let existing = try analysis(byId: id) else { return }
+        if let debugMetadataJSON {
+            existing.debugMetadataJSON = debugMetadataJSON
+        }
         try context.save()
     }
 
@@ -42,16 +50,33 @@ public final class AnalysisRepository {
         summary: String,
         skinTypeDetected: String,
         imageHash: String?,
-        criteriaJSON: String
+        localImageRelativePath: String? = nil,
+        criteriaJSON: String,
+        criterionInsightsJSON: String? = nil,
+        debugMetadataJSON: String?,
+        createdAt: Date? = nil
     ) throws {
         if let existing = try analysis(byId: id) {
             existing.userId = userId
             existing.score = score
             existing.summary = summary
             existing.skinTypeDetected = skinTypeDetected
-            existing.imageHash = imageHash
+            if let imageHash {
+                existing.imageHash = imageHash
+            }
+            if let localImageRelativePath {
+                existing.localImageRelativePath = localImageRelativePath
+            }
             existing.criteriaJSON = criteriaJSON
-            existing.createdAt = .now
+            if let criterionInsightsJSON {
+                existing.criterionInsightsJSON = criterionInsightsJSON
+            }
+            if let debugMetadataJSON {
+                existing.debugMetadataJSON = debugMetadataJSON
+            }
+            if let createdAt {
+                existing.createdAt = createdAt
+            }
         } else {
             let analysis = LocalAnalysis(
                 id: id,
@@ -60,11 +85,24 @@ public final class AnalysisRepository {
                 summary: summary,
                 skinTypeDetected: skinTypeDetected,
                 imageHash: imageHash,
-                criteriaJSON: criteriaJSON
+                localImageRelativePath: localImageRelativePath,
+                criteriaJSON: criteriaJSON,
+                criterionInsightsJSON: criterionInsightsJSON,
+                debugMetadataJSON: debugMetadataJSON,
+                createdAt: createdAt ?? .now
             )
             context.insert(analysis)
         }
         try context.save()
+    }
+
+    public func fetchAllAnalyses(userId: String) throws -> [LocalAnalysis] {
+        let predicate = #Predicate<LocalAnalysis> { $0.userId == userId }
+        let descriptor = FetchDescriptor<LocalAnalysis>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        return try context.fetch(descriptor)
     }
 
     public func fetchRecentAnalyses(userId: String, limit: Int = 20) throws -> [LocalAnalysis] {
@@ -80,6 +118,55 @@ public final class AnalysisRepository {
     public func totalAnalysisCount() throws -> Int {
         let descriptor = FetchDescriptor<LocalAnalysis>()
         return try context.fetchCount(descriptor)
+    }
+
+    public func analysisCount(userId: String) throws -> Int {
+        let predicate = #Predicate<LocalAnalysis> { $0.userId == userId }
+        let descriptor = FetchDescriptor<LocalAnalysis>(predicate: predicate)
+        return try context.fetchCount(descriptor)
+    }
+
+    public func currentScanDayStreak(userId: String, calendar: Calendar = .autoupdatingCurrent) throws -> Int {
+        let predicate = #Predicate<LocalAnalysis> { $0.userId == userId }
+        let descriptor = FetchDescriptor<LocalAnalysis>(
+            predicate: predicate,
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        let analyses = try context.fetch(descriptor)
+        return Self.consecutiveScanDayStreak(
+            forDescendingScanDates: analyses.map(\.createdAt),
+            calendar: calendar
+        )
+    }
+
+    static func consecutiveScanDayStreak(
+        forDescendingScanDates scanDates: [Date],
+        calendar: Calendar = .autoupdatingCurrent
+    ) -> Int {
+        var streak = 0
+        var previousUniqueDay: Date?
+
+        for scanDate in scanDates {
+            let day = calendar.startOfDay(for: scanDate)
+
+            if day == previousUniqueDay {
+                continue
+            }
+
+            if let previousUniqueDay {
+                guard
+                    let expectedPreviousDay = calendar.date(byAdding: .day, value: -1, to: previousUniqueDay),
+                    day == expectedPreviousDay
+                else {
+                    break
+                }
+            }
+
+            streak += 1
+            previousUniqueDay = day
+        }
+
+        return streak
     }
 
     public func reassignAnalyses(from oldUserId: String, to newUserId: String) throws {

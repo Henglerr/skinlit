@@ -1,11 +1,15 @@
 import SwiftUI
+import UIKit
 
 struct SkinJourneySection: View {
     let logs: [SkinJourneyLog]
+    let analysisEntries: [AnalysisCalendarEntry]
     let latestAnalysis: LocalAnalysis?
     let latestCriteria: [String: Double]
+    let isLocked: Bool
     @Binding var selectedDate: Date
     @Binding var displayedMonth: Date
+    let onUnlock: () -> Void
     let onLogToday: () -> Void
     let onEditSelectedDay: () -> Void
     let onLogSelectedDay: () -> Void
@@ -22,6 +26,10 @@ struct SkinJourneySection: View {
 
     private var selectedLog: SkinJourneyLog? {
         log(for: selectedDate)
+    }
+
+    private var selectedAnalysisEntry: AnalysisCalendarEntry? {
+        analysisEntry(for: selectedDate)
     }
 
     private var last14DaysLogs: [SkinJourneyLog] {
@@ -66,14 +74,18 @@ struct SkinJourneySection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
-            monthPicker
-            weekdayHeader
-            calendarGrid
-            selectedDaySummary
-            if let banner = suggestionState.bannerMessage {
-                consistencyBanner(text: banner)
+            if isLocked {
+                lockedContent
+            } else {
+                monthPicker
+                weekdayHeader
+                calendarGrid
+                selectedDaySummary
+                if let banner = suggestionState.bannerMessage {
+                    consistencyBanner(text: banner)
+                }
+                suggestionCard
             }
-            suggestionCard
         }
         .padding(18)
         .background(AppTheme.shared.current.colors.surface)
@@ -90,21 +102,119 @@ struct SkinJourneySection: View {
                 Text("Skin Journey")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                Text("Track routines, treatments, and how your skin feels.")
+                Text(isLocked
+                    ? "Unlock routines, treatments, and personalized journey suggestions."
+                    : "Track routines, treatments, and how your skin feels.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(AppTheme.shared.current.colors.textSecondary)
             }
             Spacer()
-            Button(action: onLogToday) {
-                Text("Log Today")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(AppTheme.shared.current.colors.accent)
+            if isLocked {
+                Label("PRO", systemImage: "lock.fill")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundColor(AppTheme.shared.current.colors.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(AppTheme.shared.current.colors.accent.opacity(0.12))
                     .clipShape(Capsule())
+            } else {
+                Button(action: onLogToday) {
+                    Text("Log Today")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.shared.current.colors.accent)
+                        .clipShape(Capsule())
+                }
             }
         }
+    }
+
+    private var lockedContent: some View {
+        ZStack {
+            VStack(spacing: 16) {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(AppTheme.shared.current.colors.surfaceHigh)
+                    .frame(height: 48)
+                    .overlay(
+                        HStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(AppTheme.shared.current.colors.surface)
+                                .frame(width: 34, height: 34)
+                            Spacer()
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(AppTheme.shared.current.colors.surface)
+                                .frame(width: 34, height: 34)
+                        }
+                        .padding(.horizontal, 12)
+                    )
+
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7), spacing: 8) {
+                    ForEach(0..<21, id: \.self) { index in
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(index.isMultiple(of: 5)
+                                ? AppTheme.shared.current.colors.accent.opacity(0.16)
+                                : AppTheme.shared.current.colors.surfaceHigh
+                            )
+                            .frame(height: 54)
+                    }
+                }
+
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(AppTheme.shared.current.colors.surfaceHigh)
+                    .frame(height: 120)
+                    .overlay(
+                        VStack(alignment: .leading, spacing: 10) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(AppTheme.shared.current.colors.accent.opacity(0.10))
+                                .frame(width: 150, height: 10)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(AppTheme.shared.current.colors.surface)
+                                .frame(height: 18)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(AppTheme.shared.current.colors.surface)
+                                .frame(height: 18)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(AppTheme.shared.current.colors.surface)
+                                .frame(width: 180, height: 18)
+                        }
+                        .padding(18)
+                    )
+            }
+            .opacity(0.72)
+            .blur(radius: 4)
+
+            VStack(spacing: 12) {
+                Text("Unlock personalized journey tracking")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+
+                Text("Save routines, track treatments, and get tailored suggestions based on your latest scans.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .padding(.horizontal, 18)
+
+                Button(action: onUnlock) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "lock.open.fill")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("Unlock PRO")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.shared.current.colors.accent)
+                    .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 12)
+        }
+        .frame(height: 360)
+        .clipped()
     }
 
     private var monthPicker: some View {
@@ -173,36 +283,60 @@ struct SkinJourneySection: View {
         let isFutureDay = day > today
         let isFutureMonth = SkinJourneyCalendar.startOfMonth(for: day) > currentMonth
         let log = log(for: day)
+        let analysisEntry = analysisEntry(for: day)
         let isDisabled = isFutureMonth
 
         Button {
             guard !isDisabled else { return }
             handleDayTap(day)
         } label: {
-            VStack(spacing: 6) {
-                Text("\(calendar.component(.day, from: day))")
-                    .font(.system(size: 13, weight: isSelected ? .heavy : .semibold))
-                    .foregroundColor(dayTextColor(isSelected: isSelected, isCurrentMonth: isCurrentMonth, isFutureDay: isFutureDay))
-                    .frame(maxWidth: .infinity)
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 6) {
+                    Text("\(calendar.component(.day, from: day))")
+                        .font(.system(size: 13, weight: isSelected ? .heavy : .semibold))
+                        .foregroundColor(dayTextColor(isSelected: isSelected, isCurrentMonth: isCurrentMonth, isFutureDay: isFutureDay))
+                        .frame(maxWidth: .infinity)
 
-                HStack(spacing: 3) {
-                    dot(color: AppTheme.shared.current.colors.accent, isVisible: !(log?.routineStepIDs.isEmpty ?? true))
-                    dot(color: AppTheme.shared.current.colors.warning, isVisible: !(log?.treatmentIDs.isEmpty ?? true))
-                    dot(color: AppTheme.shared.current.colors.scoreColor, isVisible: !(log?.skinStatusIDs.isEmpty ?? true))
+                    HStack(spacing: 3) {
+                        dot(color: AppTheme.shared.current.colors.accent, isVisible: !(log?.routineStepIDs.isEmpty ?? true))
+                        dot(color: AppTheme.shared.current.colors.warning, isVisible: !(log?.treatmentIDs.isEmpty ?? true))
+                        dot(color: AppTheme.shared.current.colors.scoreColor, isVisible: !(log?.skinStatusIDs.isEmpty ?? true))
+                    }
+                    .frame(height: 6)
                 }
-                .frame(height: 6)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+
+                if analysisEntry != nil {
+                    analysisBadge
+                        .offset(x: 4, y: -4)
+                }
             }
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
             .background(dayBackground(isSelected: isSelected, isToday: isToday, isCurrentMonth: isCurrentMonth))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(dayBorderColor(isSelected: isSelected, isToday: isToday), lineWidth: isSelected || isToday ? 1.2 : 0)
             )
-            .cornerRadius(14)
             .opacity(isDisabled ? 0.35 : 1.0)
         }
         .buttonStyle(.plain)
+    }
+
+    private var analysisBadge: some View {
+        ZStack {
+            Circle()
+                .fill(AppTheme.shared.current.colors.surface)
+                .frame(width: 12, height: 12)
+                .overlay(
+                    Circle()
+                        .stroke(AppTheme.shared.current.colors.textPrimary.opacity(0.12), lineWidth: 1)
+                )
+            Circle()
+                .fill(AppTheme.shared.current.colors.accent)
+                .frame(width: 5, height: 5)
+        }
+        .shadow(color: AppTheme.shared.current.colors.accent.opacity(0.22), radius: 3, y: 1)
     }
 
     private func dot(color: Color, isVisible: Bool) -> some View {
@@ -258,49 +392,29 @@ struct SkinJourneySection: View {
                 Text("Future days can't be logged yet.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-            } else if let log = selectedLog {
-                VStack(alignment: .leading, spacing: 10) {
-                    if !log.routineStepIDs.isEmpty {
-                        summaryRow(title: "Routine", ids: log.routineStepIDs)
-                    }
-                    if !log.treatmentIDs.isEmpty {
-                        summaryRow(title: "Treatments", ids: log.treatmentIDs)
-                    }
-                    if !log.skinStatusIDs.isEmpty {
-                        summaryRow(title: "Skin feels", ids: log.skinStatusIDs)
-                    }
-                    if !log.note.isEmpty {
-                        Text(log.note)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(AppTheme.shared.current.colors.textPrimary)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(AppTheme.shared.current.colors.surfaceHigh.opacity(0.5))
-                            .cornerRadius(14)
-                    }
-                    Button(action: onEditSelectedDay) {
-                        Text("Edit")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(AppTheme.shared.current.colors.textPrimary)
-                            .clipShape(Capsule())
-                    }
-                }
             } else {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("No check-in saved for this day yet.")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(AppTheme.shared.current.colors.textSecondary)
-                    Button(action: onLogSelectedDay) {
-                        Text("Log this day")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(AppTheme.shared.current.colors.accent)
-                            .clipShape(Capsule())
+                    if let analysisEntry = selectedAnalysisEntry {
+                        analysisSummaryCard(entry: analysisEntry)
+                    }
+
+                    if let log = selectedLog {
+                        checkInSummary(log: log)
+                    } else {
+                        Text(selectedAnalysisEntry == nil
+                             ? "No analysis or check-in saved for this day yet."
+                             : "No daily check-in saved for this day yet.")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                        Button(action: onLogSelectedDay) {
+                            Text("Log this day")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(AppTheme.shared.current.colors.accent)
+                                .clipShape(Capsule())
+                        }
                     }
                 }
             }
@@ -308,6 +422,137 @@ struct SkinJourneySection: View {
         .padding(16)
         .background(AppTheme.shared.current.colors.surfaceHigh.opacity(0.45))
         .cornerRadius(20)
+    }
+
+    private func analysisSummaryCard(entry: AnalysisCalendarEntry) -> some View {
+        let hasLocalPreview = hasLocalPreview(for: entry)
+        return HStack(alignment: .top, spacing: 12) {
+            analysisPreview(entry: entry)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Skin Analysis")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                    Spacer()
+                    Text(SkinJourneyFormatters.scanTime.string(from: entry.createdAt))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                }
+
+                Text(String(format: "Score %.1f / 10", entry.score))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.shared.current.colors.scoreColor)
+
+                if entry.wasAcceptedQualityOverride {
+                    HStack(spacing: 6) {
+                        analysisFlag(text: entry.wasLoggedWithMakeup ? "With Makeup" : "Manual Override")
+                        if entry.acceptedQualityOverrideReasons.contains(where: { $0 != .heavyMakeup }) {
+                            analysisFlag(text: "Lower Confidence")
+                        }
+                    }
+                }
+
+                Text(analysisSummaryText(for: entry, hasLocalPreview: hasLocalPreview))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.shared.current.colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.shared.current.colors.surface.opacity(0.88))
+        .cornerRadius(16)
+    }
+
+    @ViewBuilder
+    private func analysisPreview(entry: AnalysisCalendarEntry) -> some View {
+        if let previewImage = previewImage(for: entry) {
+            Image(uiImage: previewImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 60, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(AppTheme.shared.current.colors.surface)
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(AppTheme.shared.current.colors.accent)
+            }
+            .frame(width: 60, height: 60)
+        }
+    }
+
+    private func analysisSummaryText(for entry: AnalysisCalendarEntry, hasLocalPreview: Bool) -> String {
+        if entry.wasLoggedWithMakeup {
+            return "Analyzed anyway with makeup noted in the scan log. Compare trends, not exact score jumps."
+        }
+        if entry.wasAcceptedQualityOverride {
+            return "Analyzed anyway after a quality warning. Treat this scan as lower confidence."
+        }
+        return !hasLocalPreview
+            ? "Analysis saved on this day. Local preview unavailable."
+            : "Processed selfie saved locally for your progress history."
+    }
+
+    private func analysisFlag(text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(AppTheme.shared.current.colors.accentSoft.opacity(0.75))
+            .clipShape(Capsule())
+    }
+
+    private func previewImage(for entry: AnalysisCalendarEntry) -> UIImage? {
+        guard let imageURL = entry.localImageURL else { return nil }
+        return UIImage(contentsOfFile: imageURL.path)
+    }
+
+    private func hasLocalPreview(for entry: AnalysisCalendarEntry) -> Bool {
+        previewImage(for: entry) != nil
+    }
+
+    private func checkInSummary(log: SkinJourneyLog) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Daily Check-In")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                Spacer()
+                Button(action: onEditSelectedDay) {
+                    Text("Edit")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(AppTheme.shared.current.colors.bgPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.shared.current.colors.textPrimary)
+                        .clipShape(Capsule())
+                }
+            }
+
+            if !log.routineStepIDs.isEmpty {
+                summaryRow(title: "Routine", ids: log.routineStepIDs)
+            }
+            if !log.treatmentIDs.isEmpty {
+                summaryRow(title: "Treatments", ids: log.treatmentIDs)
+            }
+            if !log.skinStatusIDs.isEmpty {
+                summaryRow(title: "Skin feels", ids: log.skinStatusIDs)
+            }
+            if !log.note.isEmpty {
+                Text(log.note)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(AppTheme.shared.current.colors.textPrimary)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppTheme.shared.current.colors.surface.opacity(0.88))
+                    .cornerRadius(14)
+            }
+        }
     }
 
     private func summaryRow(title: String, ids: [String]) -> some View {
@@ -421,6 +666,10 @@ struct SkinJourneySection: View {
 
     private func log(for date: Date) -> SkinJourneyLog? {
         logs.first { calendar.isDate($0.dayStartAt, inSameDayAs: date) }
+    }
+
+    private func analysisEntry(for date: Date) -> AnalysisCalendarEntry? {
+        analysisEntries.first { calendar.isDate($0.dayStartAt, inSameDayAs: date) }
     }
 }
 
@@ -596,12 +845,17 @@ enum SkinJourneyCatalog {
         SkinJourneyOption(id: "cleanser", title: "Cleanser"),
         SkinJourneyOption(id: "moisturizer", title: "Moisturizer"),
         SkinJourneyOption(id: "spf", title: "SPF"),
+        SkinJourneyOption(id: "night_cleanse", title: "Night Cleanse"),
+        SkinJourneyOption(id: "barrier_cream", title: "Barrier Cream"),
         SkinJourneyOption(id: "vitamin_c", title: "Vitamin C"),
         SkinJourneyOption(id: "hydrating_serum", title: "Hydrating Serum"),
         SkinJourneyOption(id: "niacinamide", title: "Niacinamide"),
+        SkinJourneyOption(id: "peptide_serum", title: "Peptide Serum"),
         SkinJourneyOption(id: "retinoid", title: "Retinoid"),
         SkinJourneyOption(id: "salicylic_acid", title: "Salicylic Acid"),
         SkinJourneyOption(id: "azelaic_acid", title: "Azelaic Acid"),
+        SkinJourneyOption(id: "spot_treatment", title: "Spot Treatment"),
+        SkinJourneyOption(id: "overnight_mask", title: "Overnight Mask"),
     ]
 
     static let treatments: [SkinJourneyOption] = [
@@ -732,7 +986,7 @@ private enum SkinJourneyPlanner {
         } else if !recentLogs.isEmpty {
             suggestion = SkinJourneySuggestion(
                 title: "Time For a Scan",
-                message: "You are tracking your routine. Add a scan so SkinScore can compare your habits with real score changes.",
+                message: "You are tracking your routine. Add a scan so SkinLit can compare your habits with real score changes.",
                 actionStepIDs: [],
                 symbolName: "camera.viewfinder",
                 tint: AppTheme.shared.current.colors.accent
@@ -814,6 +1068,12 @@ private enum SkinJourneyFormatters {
     static let sheetDay: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
+        return formatter
+    }()
+
+    static let scanTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
         return formatter
     }()
 }

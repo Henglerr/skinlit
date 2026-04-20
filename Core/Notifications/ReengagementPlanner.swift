@@ -14,8 +14,11 @@ public struct ReengagementPlanner {
 
     public static var defaultCadence: [TimeInterval] {
         #if DEBUG
-        let isFastDebugEnabled = ProcessInfo.processInfo.environment["SKINSCORE_DEBUG_FAST_NOTIFICATIONS"] == "1"
-            || ProcessInfo.processInfo.arguments.contains("-SkinScoreDebugFastNotifications")
+        let processInfo = ProcessInfo.processInfo
+        let isFastDebugEnabled = processInfo.environment["SKINLIT_DEBUG_FAST_NOTIFICATIONS"] == "1"
+            || processInfo.environment["SKINSCORE_DEBUG_FAST_NOTIFICATIONS"] == "1"
+            || processInfo.arguments.contains("-SkinLitDebugFastNotifications")
+            || processInfo.arguments.contains("-SkinScoreDebugFastNotifications")
         return isFastDebugEnabled ? debugCadence : productionCadence
         #else
         return productionCadence
@@ -69,21 +72,21 @@ public struct ReengagementPlanner {
         switch stage {
         case .onboardingIncomplete:
             return [
-                ("Finish your setup", "Your SkinScore profile is almost ready. Open the app to complete it."),
+                ("Finish your setup", "Your SkinLit profile is almost ready. Open the app to complete it."),
                 ("Your profile is waiting", "Finish setup and unlock tips tailored to your skin goals."),
                 ("Pick up where you left off", "Come back anytime to finish your profile and start tracking.")
             ]
         case .noScansYet:
             return [
-                ("Get your first Skin Score", "Your profile is ready. Open SkinScore to see your baseline."),
+                ("Get your first skin score", "Your profile is ready. Open SkinLit to see your baseline."),
                 ("See your AI baseline", "Start tracking your skin with a quick first scan."),
                 ("Start tracking this week", "One scan is enough to begin your skin progress history.")
             ]
         case .hasScanHistory:
             return [
-                ("Time for a fresh scan", "Open SkinScore and see how your skin is changing."),
+                ("Time for a fresh scan", "Open SkinLit and see how your skin is changing."),
                 ("Track your progress", "A new scan helps compare your latest result with your last one."),
-                ("Consistency beats guesswork", "Come back for a new Skin Score and keep your progress on track.")
+                ("Consistency beats guesswork", "Come back for a new skin score and keep your progress on track.")
             ]
         }
     }

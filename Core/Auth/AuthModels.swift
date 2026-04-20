@@ -34,7 +34,7 @@ public struct AuthSession: Codable, Equatable {
     }
 
     public var usesRemoteBackend: Bool {
-        provider != .guest && (remoteUserId?.isEmpty == false)
+        remoteUserId?.isEmpty == false
     }
 }
 
@@ -43,6 +43,7 @@ public enum AuthError: LocalizedError {
     case invalidAppleCredential
     case missingProviderToken
     case googleNotConfigured
+    case guestModeUnavailable
     case backendNotConfigured
     case presentationContextMissing
     case sessionPersistenceFailed
@@ -60,8 +61,10 @@ public enum AuthError: LocalizedError {
             return "Could not obtain a valid identity token from the sign-in provider."
         case .googleNotConfigured:
             return "Google sign-in is not configured yet."
+        case .guestModeUnavailable:
+            return "Guest access is unavailable right now."
         case .backendNotConfigured:
-            return "Backend URL is not configured for authenticated accounts."
+            return "Cloud analysis is not configured for this build."
         case .presentationContextMissing:
             return "Could not present the sign-in flow."
         case .sessionPersistenceFailed:

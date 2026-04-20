@@ -2,8 +2,11 @@
 // Keep secrets out of the iOS bundle. The app should only know the backend base URL
 // and public client identifiers required by the native sign-in SDKs.
 
-GOOGLE_CLIENT_ID =
-GOOGLE_REVERSED_CLIENT_ID =
-SKIN_ANALYSIS_API_ENDPOINT =
-APP_SHARE_URL =
-
+GOOGLE_CLIENT_ID = 761568363778-qalajuv5ts953ispbj930igvck6lqe52.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.761568363778-qalajuv5ts953ispbj930igvck6lqe52
+// In xcconfig files, literal `//` starts a comment, so URLs need the Xcode-safe `/$()/` form.
+SKIN_ANALYSIS_API_ENDPOINT = https:/$()/sensible-robin-995.convex.site
+APP_SHARE_URL = https:/$()/skinlit.lat
+DEVELOPER_MODE = NO
+APP_MODE = production
+UNLIMITED_SCANS_MODE = NO

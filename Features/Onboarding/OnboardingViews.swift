@@ -417,7 +417,7 @@ struct OnboardingGoalView: View {
                 }
             }
         } message: {
-            Text("We can remind you to finish setup and come back for your next Skin Score.")
+            Text("We can remind you to finish setup and come back for your next scan.")
         }
     }
 }
@@ -700,7 +700,7 @@ struct OnboardingRatingView: View {
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 12) {
-                PrimaryButton(selectedStars == 0 ? "Rate Skin Score" : "Continue",
+                PrimaryButton(selectedStars == 0 ? "Rate SkinLit" : "Continue",
                               isEnabled: true) {
                     appState.navigate(to: .onboardingTransition)
                 }

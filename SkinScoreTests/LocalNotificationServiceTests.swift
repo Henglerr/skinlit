@@ -1,6 +1,6 @@
 import UserNotifications
 import XCTest
-@testable import SkinScore
+@testable import SkinLit
 
 final class LocalNotificationServiceTests: XCTestCase {
     func testRescheduleRemovesExistingRequestsBeforeAddingNewOnes() async {

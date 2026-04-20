@@ -10,6 +10,15 @@ public final class AppLocalSettings {
     public var notificationPromptedAt: Date?
     public var notificationAuthorizationStatusRaw: String?
     public var lastActiveAt: Date?
+    public var scanConsentVersion: String?
+    public var scanConsentAcceptedAt: Date?
+    public var pendingReferralCode: String?
+    public var referralShareCount: Int?
+    public var validatedReferralCount: Int?
+    public var referralRewardCount: Int?
+    public var claimedReferralCode: String?
+    public var referralInviteCode: String?
+    public var referralInviteURLString: String?
 
     public init(
         id: String = AppLocalSettings.singletonId,
@@ -18,7 +27,16 @@ public final class AppLocalSettings {
         notificationPromptStateRaw: String? = nil,
         notificationPromptedAt: Date? = nil,
         notificationAuthorizationStatusRaw: String? = nil,
-        lastActiveAt: Date? = nil
+        lastActiveAt: Date? = nil,
+        scanConsentVersion: String? = nil,
+        scanConsentAcceptedAt: Date? = nil,
+        pendingReferralCode: String? = nil,
+        referralShareCount: Int? = nil,
+        validatedReferralCount: Int? = nil,
+        referralRewardCount: Int? = nil,
+        claimedReferralCode: String? = nil,
+        referralInviteCode: String? = nil,
+        referralInviteURLString: String? = nil
     ) {
         self.id = id
         self.currentUserId = currentUserId
@@ -27,6 +45,15 @@ public final class AppLocalSettings {
         self.notificationPromptedAt = notificationPromptedAt
         self.notificationAuthorizationStatusRaw = notificationAuthorizationStatusRaw
         self.lastActiveAt = lastActiveAt
+        self.scanConsentVersion = scanConsentVersion
+        self.scanConsentAcceptedAt = scanConsentAcceptedAt
+        self.pendingReferralCode = pendingReferralCode
+        self.referralShareCount = referralShareCount
+        self.validatedReferralCount = validatedReferralCount
+        self.referralRewardCount = referralRewardCount
+        self.claimedReferralCode = claimedReferralCode
+        self.referralInviteCode = referralInviteCode
+        self.referralInviteURLString = referralInviteURLString
     }
 
     public static let singletonId = "app-local-settings"
